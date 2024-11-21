@@ -25,6 +25,8 @@
 #define LF_7 A8
 #define LF_8 A9
 
+#define RESTART_BUTTON 39
+
 const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 QTRSensors qtr;
 
@@ -46,8 +48,7 @@ void setup(){
   pinMode(L_OUT_B, INPUT_PULLUP);
   pinMode(R_OUT_A, INPUT_PULLUP);
   pinMode(R_OUT_B, INPUT_PULLUP);
-  pinMode(SWITCH_1, INPUT);
-  pinMode(SWITCH_2, INPUT);
+  pinMode(RESTART_BUTTON, INPUT_PULLUP);
 
   qtr.setTypeRC(); // or setTypeAnalog()
   qtr.setSensorPins(LF_PINS, 8);
@@ -69,6 +70,20 @@ void setup(){
 }
 
 void loop(){
+  if (!digitalRead(RESTART_BUTTON)) {
+    Serial.print("Received Restart Route command, restarting in 5 ");
+    delay(1000);
+    Serial.print("4 ");
+    delay(1000);
+    Serial.print("3 ");
+    delay(1000);
+    Serial.print("2 ");
+    delay(1000);
+    Serial.print("1 ");
+    delay(1000);
+    Serial.println("GO!");
+    begin();
+  }
   //Loop is used to check the Serial monitor's buffer for inputs
   // while(Serial.available() == 0){
   //   flag = true;
@@ -88,36 +103,38 @@ void loop(){
   // }
 }
 
-#define CALIBRATION_STEPS 100
+#define CALIBRATION_STEPS 20
 
-void calibrateLineFollower(int duration_ms) {
+void calibrateLineFollower() {
   Serial.print("Calibrating for White in 3 ");
   delay(1000);
-  Serial.print("2");
+  Serial.print("2 ");
   delay(1000);
-  Serial.print("1");
+  Serial.print("1 ");
   delay(1000);
-  Serial.print("Calibration in Progress : ")
+  Serial.println("Calibration in Progress : ");
   for(int i = 0; i < CALIBRATION_STEPS; i++) {
     showProgressBar(i, CALIBRATION_STEPS);
+    qtr.calibrate();
     delay(20);
   }
-  Serial.println("Calibration for White Complete!")
+  Serial.println("Calibration for White Complete!");
   Serial.println();
   delay(500);
 
   Serial.print("Calibrating for Black in 3 ");
   delay(1000);
-  Serial.print("2");
+  Serial.print("2 ");
   delay(1000);
-  Serial.print("1");
+  Serial.print("1 ");
   delay(1000);
-  Serial.print("Calibration in Progress : ")
+  Serial.println("Calibration in Progress : ");
   for(int i = 0; i < CALIBRATION_STEPS; i++) {
     showProgressBar(i, CALIBRATION_STEPS);
+    qtr.calibrate();
     delay(20);
   }
-  Serial.println("Calibration for White Complete!")
+  Serial.println("Calibration for White Complete!");
   Serial.println();
 }
 
@@ -162,40 +179,93 @@ void calibrateLineFollower(int duration_ms) {
 // }
 
 void begin() {
-  unsigned long duration = 30000;
+  unsigned long duration = 60000;
   unsigned long start = millis();
   uint16_t sensors[8];
 
+  uint16_t position;
+  int error;
+  double previousError;
+
+  int motorSpeed;
+  int leftMotorSpeed;
+  int rightMotorSpeed;
+
+  const int defaultMotorSpeed = 36;
+  const double K_p = 0.01;
+  const double K_d = 0.01;
+
   while (millis() - start < duration) {
-    int16_t position = qtr.readLineBlack(sensors);
+    position = qtr.readLineBlack(sensors);
     Serial.println(position);
-    // for(int i = 0; i < 8; i++) {
-    //   if (sensors[i] > 800) {
-    //     digitalWrite(LED_BASE + i, HIGH);
-    //   } else {
-    //     digitalWrite(LED_BASE + i, LOW);
-    //   }
-    // }
+    for(int i = 0; i < 8; i++) {
+      if (sensors[i] > 800) {
+        digitalWrite(LED_BASE + i, HIGH);
+      } else {
+        digitalWrite(LED_BASE + i, LOW);
+      }
+    }
     // Serial.println();
+    error = 3500 - position;
+    Serial.print("Error: ");
+    Serial.println(error);
 
-    int l_speed = 36, r_speed = 36;
-    double K_p = 0.1;
-    double l_error = 4000 - position;
-    double r_error = -1 * l_error;
-    double L_P = K_p * l_error;
-    double R_P = K_p * r_error;
-    l_motor(HIGH, LOW, HIGH, l_speed * L_P);
-    r_motor(HIGH, HIGH, LOW, r_speed * R_P);
+    motorSpeed = (int)(K_p * error + K_d * previousError);
+    Serial.print("Motor Speed: ");
+    Serial.println(motorSpeed);
 
-    delay(50);
+    previousError = error;
+
+    motorSpeed = checkBounded(motorSpeed, -1.5 * defaultMotorSpeed, defaultMotorSpeed);
+
+    leftMotorSpeed = defaultMotorSpeed - motorSpeed;
+    rightMotorSpeed = defaultMotorSpeed + motorSpeed;
+
+    leftMotorSpeed = checkBounded(leftMotorSpeed, -1 * defaultMotorSpeed, 2 * defaultMotorSpeed);
+    rightMotorSpeed = checkBounded(rightMotorSpeed, -1 * defaultMotorSpeed, 2 * defaultMotorSpeed);
+    Serial.print("Left Motor Speed: ");
+    Serial.println(leftMotorSpeed);
+    Serial.print("Right Motor Speed: ");
+    Serial.println(rightMotorSpeed);
+
+    if (leftMotorSpeed > 0) {
+      l_motor(HIGH, LOW, HIGH, leftMotorSpeed);
+    } else {
+      l_motor(HIGH, HIGH, LOW, -1 * leftMotorSpeed);
+    }
+
+    if (leftMotorSpeed > 0) {
+      r_motor(HIGH, HIGH, LOW, rightMotorSpeed);
+    } else {
+      r_motor(HIGH, LOW, HIGH, -1.0 * rightMotorSpeed);
+    }
   }
   Brake();
 }
 
 void linefollow() {
-  Serial.println("Starting in 5 seconds");
-  delay(5000);
-  // begin();
+  Serial.print("Starting in 5 ");
+  delay(1000);
+  Serial.print("4 ");
+  delay(1000);
+  Serial.print("3 ");
+  delay(1000);
+  Serial.print("2 ");
+  delay(1000);
+  Serial.print("1 ");
+  delay(1000);
+  Serial.println("GO!");
+  begin();
+}
+
+int checkBounded(int input, int lowBound, int highBound) {
+  if (input >= lowBound && input <= highBound) {
+    return input;
+  } else if (input < lowBound) {
+    return lowBound;
+  } else {
+    return highBound;
+  }
 }
 
 void route(){
@@ -356,7 +426,8 @@ void showProgressBar(int step, int totalSteps) {
   float progress = (float)step / totalSteps;
   int position = progress * barWidth;
 
-  Serial.print("\r["); // Carriage return to overwrite the same line
+  // Print the progress bar
+  Serial.print("[");
   for (int i = 0; i < barWidth; i++) {
     if (i < position) {
       Serial.print("="); // Filled portion
@@ -368,9 +439,5 @@ void showProgressBar(int step, int totalSteps) {
   }
   Serial.print("] ");
   Serial.print(int(progress * 100)); // Percentage completed
-  Serial.print("%");
-
-  if (step == totalSteps) {
-    Serial.println(); // Move to the next line after completion
-  }
+  Serial.println("%"); // Print percentage and move to the next line
 }
