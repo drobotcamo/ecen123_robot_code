@@ -49,17 +49,6 @@ void setup(){
   pinMode(SWITCH_1, INPUT);
   pinMode(SWITCH_2, INPUT);
 
-  // pinMode(LF_1, INPUT);
-  // pinMode(LF_2, INPUT);
-  // pinMode(LF_3, INPUT);
-  // pinMode(LF_4, INPUT);
-  // pinMode(LF_5, INPUT);
-  // pinMode(LF_6, INPUT);
-  // pinMode(LF_7, INPUT);
-  // pinMode(LF_8, INPUT);
-
-  // pinMode(LF_CTRL, 13);
-
   qtr.setTypeRC(); // or setTypeAnalog()
   qtr.setSensorPins(LF_PINS, 8);
 
@@ -75,7 +64,7 @@ void setup(){
   digitalWrite(ENABLE_A, LOW);
   digitalWrite(ENABLE_B, LOW);
 
-  // route();
+  calibrateLineFollower();
   linefollow();
 }
 
@@ -97,6 +86,39 @@ void loop(){
   //   else
   //     break;
   // }
+}
+
+#define CALIBRATION_STEPS 100
+
+void calibrateLineFollower(int duration_ms) {
+  Serial.print("Calibrating for White in 3 ");
+  delay(1000);
+  Serial.print("2");
+  delay(1000);
+  Serial.print("1");
+  delay(1000);
+  Serial.print("Calibration in Progress : ")
+  for(int i = 0; i < CALIBRATION_STEPS; i++) {
+    showProgressBar(i, CALIBRATION_STEPS);
+    delay(20);
+  }
+  Serial.println("Calibration for White Complete!")
+  Serial.println();
+  delay(500);
+
+  Serial.print("Calibrating for Black in 3 ");
+  delay(1000);
+  Serial.print("2");
+  delay(1000);
+  Serial.print("1");
+  delay(1000);
+  Serial.print("Calibration in Progress : ")
+  for(int i = 0; i < CALIBRATION_STEPS; i++) {
+    showProgressBar(i, CALIBRATION_STEPS);
+    delay(20);
+  }
+  Serial.println("Calibration for White Complete!")
+  Serial.println();
 }
 
 // void selection(int option){
@@ -139,14 +161,6 @@ void loop(){
 //   }
 // }
 
-void calibrateWhite() {
-
-}
-
-void calibrateBlack() {
-  
-}
-
 void begin() {
   unsigned long duration = 30000;
   unsigned long start = millis();
@@ -179,15 +193,9 @@ void begin() {
 }
 
 void linefollow() {
-  Serial.println("Calibrating White in 5 seconds");
-  delay(5000);
-  qtr.calibrate();
-  Serial.println("Calibrating Black in 5 seconds");
-  delay(5000);
-  qtr.calibrate();
   Serial.println("Starting in 5 seconds");
   delay(5000);
-  begin();
+  // begin();
 }
 
 void route(){
@@ -341,4 +349,28 @@ void isr2()
     counter++;
   else 
     counter--;
+}
+
+void showProgressBar(int step, int totalSteps) {
+  int barWidth = 20; // Width of the progress bar in characters
+  float progress = (float)step / totalSteps;
+  int position = progress * barWidth;
+
+  Serial.print("\r["); // Carriage return to overwrite the same line
+  for (int i = 0; i < barWidth; i++) {
+    if (i < position) {
+      Serial.print("="); // Filled portion
+    } else if (i == position) {
+      Serial.print(">"); // Moving pointer
+    } else {
+      Serial.print(" "); // Empty space
+    }
+  }
+  Serial.print("] ");
+  Serial.print(int(progress * 100)); // Percentage completed
+  Serial.print("%");
+
+  if (step == totalSteps) {
+    Serial.println(); // Move to the next line after completion
+  }
 }
