@@ -72,6 +72,7 @@ void setup(){
 void loop(){
   if (!digitalRead(RESTART_BUTTON)) {
     Serial.print("Received Restart Route command, restarting in 5 ");
+    turnLEDS(HIGH);
     delay(1000);
     Serial.print("4 ");
     delay(1000);
@@ -106,35 +107,66 @@ void loop(){
 #define CALIBRATION_STEPS 20
 
 void calibrateLineFollower() {
+  turnLEDS(LOW);
   Serial.print("Calibrating for White in 3 ");
-  delay(1000);
+  turnLEDS(HIGH);
+  delay(500);
+  turnLEDS(LOW);
+  delay(500);   
+
   Serial.print("2 ");
-  delay(1000);
+  turnLEDS(HIGH);
+  delay(500);
+  turnLEDS(LOW);
+  delay(500);  
+
   Serial.print("1 ");
-  delay(1000);
+  turnLEDS(HIGH);
+  delay(500);
+  turnLEDS(LOW);
+  delay(500);  
+
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < CALIBRATION_STEPS; i++) {
     showProgressBar(i, CALIBRATION_STEPS);
+    updateLEDS(i, CALIBRATION_STEPS);
     qtr.calibrate();
     delay(20);
   }
   Serial.println("Calibration for White Complete!");
   Serial.println();
-  delay(500);
+
+  turnLEDS(LOW);
+  delay(1000);
 
   Serial.print("Calibrating for Black in 3 ");
-  delay(1000);
+  turnLEDS(HIGH);
+  delay(500);
+  turnLEDS(LOW);
+  delay(500);
+
   Serial.print("2 ");
-  delay(1000);
+  turnLEDS(HIGH);
+  delay(500);
+  turnLEDS(LOW);
+  delay(500);
+
   Serial.print("1 ");
-  delay(1000);
+  turnLEDS(HIGH);
+  delay(500);
+  turnLEDS(LOW);
+  delay(500);
+
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < CALIBRATION_STEPS; i++) {
     showProgressBar(i, CALIBRATION_STEPS);
+    updateLEDS(i, CALIBRATION_STEPS);
     qtr.calibrate();
     delay(20);
   }
-  Serial.println("Calibration for White Complete!");
+
+  turnLEDS(LOW);
+  Serial.println("Calibration for Black Complete!");
   Serial.println();
 }
 
@@ -440,4 +472,22 @@ void showProgressBar(int step, int totalSteps) {
   Serial.print("] ");
   Serial.print(int(progress * 100)); // Percentage completed
   Serial.println("%"); // Print percentage and move to the next line
+}
+
+void turnLEDS(int state){
+  for(int i = 0; i < 8; i++)
+    digitalWrite(LED_BASE + i, state);
+}
+
+void updateLEDS(int step, int totalSteps){
+  int totalLEDS = 8; 
+  float progress = (float)step / totalSteps;
+  int position = progress * totalLEDS;
+
+  for (int i = 0; i < totalLEDS; i++){
+    if (i < position)
+      digitalWrite(LED_BASE + i, HIGH);
+    else 
+      digitalWrite(LED_BASE + i, LOW);    
+  }
 }
