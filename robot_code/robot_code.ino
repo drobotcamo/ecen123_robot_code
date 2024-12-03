@@ -97,23 +97,6 @@ void loop(){
     Serial.println("GO!");
     begin();
   }
-  //Loop is used to check the Serial monitor's buffer for inputs
-  // while(Serial.available() == 0){
-  //   flag = true;
-  // }
-
-  // while(Serial.available() > 0) {
-  //   char c = Serial.read();
-
-  //   if(c && flag){//Takes only 1 char from the serial monitor
-  //     // int option = c - '0';
-  //     selection(c);
-  //     flag = false;
-  //     break;
-  //   }
-  //   else
-  //     break;
-  // }
 }
 
 #define CALIBRATION_STEPS 20
@@ -181,46 +164,6 @@ void calibrateLineFollower() {
   Serial.println("Calibration for Black Complete!");
   Serial.println();
 }
-
-// void selection(int option){
-//   Serial.println(option);
-//   switch(option){
-//     case(66):
-//       Serial.println("B");
-//       qtr.calibrate();
-//       delay(delay_options);
-      
-//       break;
-//     case(87):
-//       Serial.println("W");
-//       qtr.calibrate();
-//       delay(delay_options);
-//       break;
-//     case(88):
-//       Serial.println("X");
-
-
-//       unsigned long start_ts = millis();
-//       while(millis() - start_ts < 30000) {
-//         int16_t position = qtr.readLineBlack(sensors);
-//         Serial.println(position);
-//         for(int i = 0; i < 8; i++) {
-//           if (sensors[i] > 800) {
-//             digitalWrite(LED_BASE + i, HIGH);
-//           } else {
-//             digitalWrite(LED_BASE + i, LOW);
-//           }
-//         }
-//         // Serial.println();
-//         delay(50);
-//       }
-      
-//       delay(delay_options);
-//       break;
-//     default:
-//       Serial.println("Invalid selection!"); //If input is out of range
-//   }
-// }
 
 void begin() {
   unsigned long duration = 60000;
