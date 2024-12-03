@@ -1,4 +1,6 @@
 #include <QTRSensors.h>
+#include <Wire.h>
+#include "Adafruit_TCS34725.h"
 
 #define ENABLE_A 2 //Left
 #define ENABLE_B 7//Right
@@ -25,7 +27,14 @@
 #define LF_7 A8
 #define LF_8 A9
 
+#define SENSOR A15
+
 #define RESTART_BUTTON 39
+
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
+
+const int DIST[8] = {5, 10, 15, 20, 25,30, 35, 40};
+const float VOLT[8] = {3.42, 2.84, 1.92, 1.42, 1.11, 0.93, 0.74, 0.62};
 
 const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 QTRSensors qtr;
@@ -49,6 +58,9 @@ void setup(){
   pinMode(R_OUT_A, INPUT_PULLUP);
   pinMode(R_OUT_B, INPUT_PULLUP);
   pinMode(RESTART_BUTTON, INPUT_PULLUP);
+  pinMode(SENSOR, INPUT);
+
+  tcs.begin();
 
   qtr.setTypeRC(); // or setTypeAnalog()
   qtr.setSensorPins(LF_PINS, 8);
@@ -474,6 +486,8 @@ void showProgressBar(int step, int totalSteps) {
   Serial.println("%"); // Print percentage and move to the next line
 }
 
+
+//LED CODE
 void turnLEDS(int state){
   for(int i = 0; i < 8; i++)
     digitalWrite(LED_BASE + i, state);
@@ -490,4 +504,69 @@ void updateLEDS(int step, int totalSteps){
     else 
       digitalWrite(LED_BASE + i, LOW);    
   }
+}
+
+//RGB SENSOR CODE
+int rgb_calc(){
+  int time = millis();
+  uint16_t r, g, b, c, colorTemp, lux;
+
+  tcs.getRawData(&r, &g, &b, &c);
+  colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
+  lux = tcs.calculateLux(r, g, b);
+
+  //Determines White
+  if(abs(r - b) < 250 && abs(r - g) < 250  && abs(b - g) < 250)
+    return 0;
+
+  //Determines Black
+  else if(r < 1000 && g < 1000 && b < 1000)
+    return 1;
+  
+  //Determines Red
+  else if(r > g && r > b)
+    return 2;
+
+  //Determines Green
+  else if(g > r && g > b)
+    return 3;
+  
+  //Determine Blue
+  else if(b > r && b > g)
+    return 4;
+  
+  return -1;
+}
+
+
+//PROXIMITY SENSOR
+int distance_calc(){
+  int i, reading, distRight, distClose, dist; 
+  float volt, voltRight, voltClose, slope;
+  bool in_range = false;
+
+  reading = analogRead(SENSOR);
+  volt = reading * (5.0 / 1023.0);
+
+  //The equation being used to calculate distance is X = ((x2 - x1) / (y2 - y1)) * (Y - y1) + x1
+  for(i = 1; i < 7; i++)
+    //We check to see if the voltage given by the sensor is between 
+    if(volt > VOLT[i] && volt < VOLT[i - 1]){
+      voltRight = VOLT[i];
+      voltClose = VOLT[i - 1];
+      distRight = DIST[i];
+      distClose = DIST[i - 1];
+      
+      slope =  (distRight - distClose) / (voltRight - voltClose);
+      dist = (slope * (volt - voltClose)) + distClose;
+
+      in_range = true; 
+      break;
+    }
+  
+  //If the object is further than 40cm, it is considred out of range
+  if(!in_range)
+    return -1;
+
+  return dist;
 }
