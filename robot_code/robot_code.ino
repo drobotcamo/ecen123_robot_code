@@ -423,21 +423,6 @@ void r_motor(int EN_B, int IN3, int IN4, int speed){
 void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
   int switchval1 = digitalRead(SWITCH_1);
   int switchval2 = digitalRead(SWITCH_2);
-
-  // int speed = 0;
-  // if (switchval1) {
-  //   if (switchval2) {
-  //     speed = 255; // 1: high 2: high
-  //   } else {
-  //     speed = 157; // 1: high 2: low
-  //   }
-  // } else {
-  //   if (switchval2) {
-  //     speed = 68; // 1: low 2: high
-  //   } else {
-  //     speed = 36; // 1: low 2: low
-  //   }
-  // }
   
   int speed = 36;
   //Left Motor
@@ -505,6 +490,7 @@ void updateLEDS(int step, int totalSteps){
       digitalWrite(LED_BASE + i, LOW);    
   }
 }
+
 
 //RGB SENSOR CODE
 int rgb_calc(){
