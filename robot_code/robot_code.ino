@@ -31,6 +31,8 @@
 
 #define RESTART_BUTTON 39
 
+#define TOP_SPEED 255
+
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
 const int DIST[8] = {5, 10, 15, 20, 25,30, 35, 40};
@@ -60,7 +62,7 @@ void setup(){
   pinMode(RESTART_BUTTON, INPUT_PULLUP);
   pinMode(SENSOR, INPUT);
 
-  tcs.begin();
+  // tcs.begin();
 
   qtr.setTypeRC(); // or setTypeAnalog()
   qtr.setSensorPins(LF_PINS, 8);
@@ -99,27 +101,12 @@ void loop(){
   }
 }
 
-#define CALIBRATION_STEPS 20
+#define CALIBRATION_STEPS 40
 
 void calibrateLineFollower() {
   turnLEDS(LOW);
-  Serial.print("Calibrating for White in 3 ");
-  turnLEDS(HIGH);
-  delay(500);
-  turnLEDS(LOW);
-  delay(500);   
-
-  Serial.print("2 ");
-  turnLEDS(HIGH);
-  delay(500);
-  turnLEDS(LOW);
-  delay(500);  
-
-  Serial.print("1 ");
-  turnLEDS(HIGH);
-  delay(500);
-  turnLEDS(LOW);
-  delay(500);  
+  Serial.println("Calibrating for White in 2 seconds");
+  flashLEDs(2);
 
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < CALIBRATION_STEPS; i++) {
@@ -134,23 +121,8 @@ void calibrateLineFollower() {
   turnLEDS(LOW);
   delay(1000);
 
-  Serial.print("Calibrating for Black in 3 ");
-  turnLEDS(HIGH);
-  delay(500);
-  turnLEDS(LOW);
-  delay(500);
-
-  Serial.print("2 ");
-  turnLEDS(HIGH);
-  delay(500);
-  turnLEDS(LOW);
-  delay(500);
-
-  Serial.print("1 ");
-  turnLEDS(HIGH);
-  delay(500);
-  turnLEDS(LOW);
-  delay(500);
+  Serial.println("Calibrating for Black in 2 seconds");
+  flashLEDs(2);
 
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < CALIBRATION_STEPS; i++) {
@@ -166,7 +138,7 @@ void calibrateLineFollower() {
 }
 
 void begin() {
-  unsigned long duration = 60000;
+  unsigned long duration = 120000;
   unsigned long start = millis();
   uint16_t sensors[8];
 
@@ -178,9 +150,10 @@ void begin() {
   int leftMotorSpeed;
   int rightMotorSpeed;
 
-  const int defaultMotorSpeed = 36;
-  const double K_p = 0.01;
-  const double K_d = 0.01;
+  const int defaultMotorSpeed = 155;
+  // const double K_p = 0.03;
+  const double K_p = 0.065;
+  const double K_d = 0.06;
 
   while (millis() - start < duration) {
     position = qtr.readLineBlack(sensors);
@@ -197,34 +170,34 @@ void begin() {
     Serial.print("Error: ");
     Serial.println(error);
 
-    motorSpeed = (int)(K_p * error + K_d * previousError);
+    motorSpeed = (int)(K_p * error + K_d * (error - previousError));
     Serial.print("Motor Speed: ");
     Serial.println(motorSpeed);
 
     previousError = error;
 
-    motorSpeed = checkBounded(motorSpeed, -1.5 * defaultMotorSpeed, defaultMotorSpeed);
+    motorSpeed = checkBounded(motorSpeed, -2 * defaultMotorSpeed, TOP_SPEED);
 
     leftMotorSpeed = defaultMotorSpeed - motorSpeed;
     rightMotorSpeed = defaultMotorSpeed + motorSpeed;
 
-    leftMotorSpeed = checkBounded(leftMotorSpeed, -1 * defaultMotorSpeed, 2 * defaultMotorSpeed);
-    rightMotorSpeed = checkBounded(rightMotorSpeed, -1 * defaultMotorSpeed, 2 * defaultMotorSpeed);
+    leftMotorSpeed = checkBounded(leftMotorSpeed, -1 * defaultMotorSpeed, TOP_SPEED);
+    rightMotorSpeed = checkBounded(rightMotorSpeed, -1 * defaultMotorSpeed, TOP_SPEED);
     Serial.print("Left Motor Speed: ");
     Serial.println(leftMotorSpeed);
     Serial.print("Right Motor Speed: ");
     Serial.println(rightMotorSpeed);
 
-    if (leftMotorSpeed > 0) {
-      l_motor(HIGH, LOW, HIGH, leftMotorSpeed);
+    if (rightMotorSpeed > 0) {
+      r_motor(HIGH, LOW, HIGH, rightMotorSpeed);
     } else {
-      l_motor(HIGH, HIGH, LOW, -1 * leftMotorSpeed);
+      r_motor(HIGH, HIGH, LOW, -1 * rightMotorSpeed);
     }
 
     if (leftMotorSpeed > 0) {
-      r_motor(HIGH, HIGH, LOW, rightMotorSpeed);
+      l_motor(HIGH, HIGH, LOW, leftMotorSpeed);
     } else {
-      r_motor(HIGH, LOW, HIGH, -1.0 * rightMotorSpeed);
+      l_motor(HIGH, LOW, HIGH, -1.0 * leftMotorSpeed);
     }
   }
   Brake();
@@ -498,4 +471,13 @@ int distance_calc(){
     return -1;
 
   return dist;
+}
+
+void flashLEDs(int count) {
+  for(int i = 0; i < count; i++) {
+    turnLEDS(HIGH);
+    delay(500);
+    turnLEDS(LOW);
+    delay(500);
+  }
 }
