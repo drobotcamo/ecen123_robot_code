@@ -62,8 +62,13 @@ void setup(){
   pinMode(RESTART_BUTTON, INPUT_PULLUP);
   pinMode(SENSOR, INPUT);
 
-  // tcs.begin();
-
+  if (tcs.begin()) {
+    Serial.println("Found sensor");
+  } else {
+    Serial.println("No TCS34725 found ... check your connections");
+    while (1);
+  }
+  
   qtr.setTypeRC(); // or setTypeAnalog()
   qtr.setSensorPins(LF_PINS, 8);
 
