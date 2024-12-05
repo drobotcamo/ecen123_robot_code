@@ -48,7 +48,19 @@ int counter = 0;
 
 bool flag = true; 
 
+enum TEST_COLORS {
+  GREEN,
+  BLUE,
+  WHITE,
+  RED,
+  PURPLE,
+  YELLOW,
+  NUM_COLORS // Keeps track of the total number of colors
+};
+
 void setup(){
+  Serial.begin(9600);
+
   pinMode(ENABLE_A, OUTPUT);
   pinMode(ENABLE_B, OUTPUT);
   pinMode(IN_1, OUTPUT);
@@ -69,23 +81,26 @@ void setup(){
     while (1);
   }
 
-  qtr.setTypeRC(); // or setTypeAnalog()
-  qtr.setSensorPins(LF_PINS, 8);
+  // qtr.setTypeRC(); // or setTypeAnalog()
+  // qtr.setSensorPins(LF_PINS, 8);
 
-  for(int i = 0; i < 8; i++) {
-    pinMode(LED_BASE + i, OUTPUT);
-  }
+  // for(int i = 0; i < 8; i++) {
+  //   pinMode(LED_BASE + i, OUTPUT);
+  // }
 
-  attachInterrupt(digitalPinToInterrupt(L_OUT_A), isr, RISING);
-  attachInterrupt(digitalPinToInterrupt(R_OUT_A), isr2, RISING);
-  
-  Serial.begin(9600);
+  // attachInterrupt(digitalPinToInterrupt(L_OUT_A), isr, RISING);
+  // attachInterrupt(digitalPinToInterrupt(R_OUT_A), isr2, RISING);
 
-  digitalWrite(ENABLE_A, LOW);
-  digitalWrite(ENABLE_B, LOW);
+  // digitalWrite(ENABLE_A, LOW);
+  // digitalWrite(ENABLE_B, LOW);
 
-  calibrateLineFollower();
-  linefollow();
+  // calibrateLineFollower();
+  // linefollow();
+
+
+  Serial.println("Starting in 2 seconds");
+  delay(2000);
+  calibrate_RGB();
 }
 
 void loop(){
@@ -412,6 +427,95 @@ void updateLEDS(int step, int totalSteps){
   }
 }
 
+#define NUM_RGB_POINTS 10
+
+String getColorName(TEST_COLORS color) {
+  switch (color) {
+    case GREEN: return "Green";
+    case BLUE: return "Blue";
+    case WHITE: return "White";
+    case RED: return "Red";
+    case PURPLE: return "Purple";
+    case YELLOW: return "Yellow";
+    default: return "Unknown";
+  }
+}
+
+void calibrate_RGB() {
+  int index = 0;
+  Serial.println("Which color is being recorded right now?");
+  Serial.println("Options: GREEN, BLUE, WHITE, RED, PURPLE, YELLOW");
+  Serial.println("Type the color name (case-insensitive) or 'quit' to exit.");
+
+  TEST_COLORS currentColor;
+
+  while (true) {
+
+    while (true) {
+      if (Serial.available()) {
+        String message = Serial.readStringUntil('\n'); 
+        message.trim();
+        message.toLowerCase();
+
+        if (message.equals("quit")) {
+          Serial.println("Quitting calibration.");
+          return;
+        } else if (message.equals("green")) {
+          currentColor = GREEN;
+          break;
+        } else if (message.equals("blue")) {
+          currentColor = BLUE;
+          break;
+        } else if (message.equals("white")) {
+          currentColor = WHITE;
+          break;
+        } else if (message.equals("red")) {
+          currentColor = RED;
+          break;
+        } else if (message.equals("purple")) {
+          currentColor = PURPLE;
+          break;
+        } else if (message.equals("yellow")) {
+          currentColor = YELLOW;
+          break;
+        } else {
+          Serial.println("Invalid color. Please type one of: GREEN, BLUE, WHITE, RED, PURPLE, YELLOW.");
+        }
+      }
+    }
+
+    for (int i = 0; i < NUM_RGB_POINTS; i++) {
+      get_RGB_data(&index, currentColor);
+      delay(100); // Collect data with a small delay
+    }
+  }
+}
+
+void get_RGB_data(int* index, TEST_COLORS color) {
+  int time = millis();
+  uint16_t r, g, b, c, colorTemp, lux;
+
+  tcs.getRawData(&r, &g, &b, &c);
+  colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
+  lux = tcs.calculateLux(r, g, b);
+
+  record_RGB_data(*index, r, g, b, c, colorTemp, lux, time, color);
+
+  (*index) += 1;
+}
+
+void record_RGB_data(int index, int r, int g, int b, int c, int colorTemp, int lux, int time, TEST_COLORS color) {
+  Serial.print(index); Serial.print(",");
+  Serial.print(r); Serial.print(",");
+  Serial.print(g); Serial.print(",");
+  Serial.print(b); Serial.print(",");
+  Serial.print(c); Serial.print(",");
+  Serial.print(colorTemp); Serial.print(",");
+  Serial.print(lux); Serial.print(",");
+  Serial.print(getColorName(color)+",");
+  Serial.print(time);
+  Serial.println();
+}
 
 //RGB SENSOR CODE
 int rgb_calc(){
@@ -486,16 +590,3 @@ void flashLEDs(int count) {
     delay(500);
   }
 }
-
-  lux = tcs.calculateLux(r, g, b);
-
-  Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
-  Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
-  Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
-  Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
-  Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
-  Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
-  Serial.println(" ");
-
-  int cur = millis() - time;
-  Serial.println(cur);
