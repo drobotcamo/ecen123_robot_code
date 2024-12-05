@@ -35,8 +35,8 @@
 
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
-const int DIST[8] = {5, 10, 15, 20, 25,30, 35, 40};
-const float VOLT[8] = {3.42, 2.84, 1.92, 1.42, 1.11, 0.93, 0.74, 0.62};
+const int DIST[11] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55};
+const float VOLT[11] = {3.11, 2.3, 1.53, 1.21, 1.03, 0.89, 0.73, 0.69, 0.66, 0.61, 0.57};
 
 const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 QTRSensors qtr;
@@ -456,7 +456,7 @@ int distance_calc(){
   volt = reading * (5.0 / 1023.0);
 
   //The equation being used to calculate distance is X = ((x2 - x1) / (y2 - y1)) * (Y - y1) + x1
-  for(i = 1; i < 7; i++)
+  for(i = 1; i < 11; i++)
     //We check to see if the voltage given by the sensor is between 
     if(volt > VOLT[i] && volt < VOLT[i - 1]){
       voltRight = VOLT[i];
