@@ -68,7 +68,7 @@ void setup(){
     Serial.println("No TCS34725 found ... check your connections");
     while (1);
   }
-  
+
   qtr.setTypeRC(); // or setTypeAnalog()
   qtr.setSensorPins(LF_PINS, 8);
 
@@ -486,3 +486,16 @@ void flashLEDs(int count) {
     delay(500);
   }
 }
+
+  lux = tcs.calculateLux(r, g, b);
+
+  Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
+  Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
+  Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
+  Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
+  Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
+  Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
+  Serial.println(" ");
+
+  int cur = millis() - time;
+  Serial.println(cur);
