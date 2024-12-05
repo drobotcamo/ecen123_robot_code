@@ -499,3 +499,21 @@ void flashLEDs(int count) {
 
   int cur = millis() - time;
   Serial.println(cur);
+}
+  Loop is used to check the Serial monitor's buffer for inputs
+  while(Serial.available() == 0){
+    flag = true;
+  }
+
+  while(Serial.available() > 0) {
+    char c = Serial.read();
+
+    if(c && flag){//Takes only 1 char from the serial monitor
+      // int option = c - '0';
+      selection(c);
+      flag = false;
+      break;
+    }
+    else
+      break;
+  }
