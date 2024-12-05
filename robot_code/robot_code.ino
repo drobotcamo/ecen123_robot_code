@@ -2,8 +2,10 @@
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
 
+// ============ BEGIN PIN DEFINITIONS ============
+// Motor Pins
 #define ENABLE_A 2 //Left
-#define ENABLE_B 7//Right
+#define ENABLE_B 7 //Right
 #define IN_1 3
 #define IN_2 4
 #define IN_3 8
@@ -12,12 +14,9 @@
 #define L_OUT_B 46
 #define R_OUT_A 21
 #define R_OUT_B 44
-#define SWITCH_1 27
-#define SWITCH_2 26
-#define delay_options 1000
+// End Motor Pins
 
-#define LED_BASE 22
-
+// Line Follower Pins
 #define LF_1 A2
 #define LF_2 A3
 #define LF_3 A4
@@ -26,37 +25,41 @@
 #define LF_6 A7
 #define LF_7 A8
 #define LF_8 A9
+const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
+// End Line Follower Pins
 
-#define SENSOR A15
-
+#define LED_BASE 22
+#define PROX_SENSOR A15
 #define RESTART_BUTTON 39
+// ============ END PIN DEFINITIONS ============
 
+
+// ============ BEGIN DECLARATIONS ============
 #define TOP_SPEED 255
 
-Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
-
+// prox. sensor values
 const int DIST[11] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55};
 const float VOLT[11] = {3.11, 2.3, 1.53, 1.21, 1.03, 0.89, 0.73, 0.69, 0.66, 0.61, 0.57};
 
-const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
-QTRSensors qtr;
+// color sensor 
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
-#define LF_CTRL 13
+// line follower
+QTRSensors qtr;
+#define LF_CALIB_STEPS 40
 
 int b_value = 0;
 int counter = 0;
 
-bool flag = true;
-
-enum TEST_COLORS {
+enum MOLE_COLORS {
   GREEN,
   BLUE,
   WHITE,
   RED,
   PURPLE,
-  YELLOW,
-  NUM_COLORS // Keeps track of the total number of colors
+  YELLOW
 };
+// ============ END DECLARATIONS ============
 
 void setup(){
   Serial.begin(9600);
@@ -72,8 +75,12 @@ void setup(){
   pinMode(R_OUT_A, INPUT_PULLUP);
   pinMode(R_OUT_B, INPUT_PULLUP);
   pinMode(RESTART_BUTTON, INPUT_PULLUP);
-  pinMode(SENSOR, INPUT);
+  pinMode(PROX_SENSOR, INPUT);
+  for(int i = 0; i < 8; i++) {
+    pinMode(LED_BASE + i, OUTPUT);
+  }
 
+  // initialize color sensor
   if (tcs.begin()) {
     Serial.println("Found sensor");
   } else {
@@ -81,22 +88,20 @@ void setup(){
     while (1);
   }
 
-  // qtr.setTypeRC(); // or setTypeAnalog()
-  // qtr.setSensorPins(LF_PINS, 8);
+  // initialize line follower
+  qtr.setTypeRC(); // or setTypeAnalog()
+  qtr.setSensorPins(LF_PINS, 8);
 
-  // for(int i = 0; i < 8; i++) {
-  //   pinMode(LED_BASE + i, OUTPUT);
-  // }
+  // initialize motor encoder interrupts (distance tracking)
+  attachInterrupt(digitalPinToInterrupt(L_OUT_A), isr, RISING);
+  attachInterrupt(digitalPinToInterrupt(R_OUT_A), isr2, RISING);
 
-  // attachInterrupt(digitalPinToInterrupt(L_OUT_A), isr, RISING);
-  // attachInterrupt(digitalPinToInterrupt(R_OUT_A), isr2, RISING);
-
-  // digitalWrite(ENABLE_A, LOW);
-  // digitalWrite(ENABLE_B, LOW);
+  // make sure motors are off
+  digitalWrite(ENABLE_A, LOW);
+  digitalWrite(ENABLE_B, LOW);
 
   // calibrateLineFollower();
   // linefollow();
-
 
   Serial.println("Starting in 2 seconds");
   delay(2000);
@@ -105,58 +110,12 @@ void setup(){
 
 void loop(){
   if (!digitalRead(RESTART_BUTTON)) {
-    Serial.print("Received Restart Route command, restarting in 5 ");
-    turnLEDS(HIGH);
-    delay(1000);
-    Serial.print("4 ");
-    delay(1000);
-    Serial.print("3 ");
-    delay(1000);
-    Serial.print("2 ");
-    delay(1000);
-    Serial.print("1 ");
-    delay(1000);
-    Serial.println("GO!");
-    begin();
+    // loop code here maybe?
   }
 }
 
-#define CALIBRATION_STEPS 40
-
-void calibrateLineFollower() {
-  turnLEDS(LOW);
-  Serial.println("Calibrating for White in 2 seconds");
-  flashLEDs(2);
-
-  Serial.println("Calibration in Progress : ");
-  for(int i = 0; i < CALIBRATION_STEPS; i++) {
-    showProgressBar(i, CALIBRATION_STEPS);
-    updateLEDS(i, CALIBRATION_STEPS);
-    qtr.calibrate();
-    delay(20);
-  }
-  Serial.println("Calibration for White Complete!");
-  Serial.println();
-
-  turnLEDS(LOW);
-  delay(1000);
-
-  Serial.println("Calibrating for Black in 2 seconds");
-  flashLEDs(2);
-
-  Serial.println("Calibration in Progress : ");
-  for(int i = 0; i < CALIBRATION_STEPS; i++) {
-    showProgressBar(i, CALIBRATION_STEPS);
-    updateLEDS(i, CALIBRATION_STEPS);
-    qtr.calibrate();
-    delay(20);
-  }
-
-  turnLEDS(LOW);
-  Serial.println("Calibration for Black Complete!");
-  Serial.println();
-}
-
+// ============ BEGIN LINE FOLLOWER CODE ============
+// this method will attempt to follow a line for ~duration~ milliseconds
 void begin() {
   unsigned long duration = 120000;
   unsigned long start = millis();
@@ -223,6 +182,46 @@ void begin() {
   Brake();
 }
 
+// calibrate the line follower in two phases -> first expose all of 
+// the LF sensors to the lightest color they will see (wood) and
+// then to the darkest color (black tape)
+// note: it's important that every one of the eight sensors sees
+// black, not just the middle few. 
+void calibrateLineFollower() {
+  turnLEDS(LOW);
+  Serial.println("Calibrating for White in 2 seconds");
+  flashLEDs(2);
+
+  Serial.println("Calibration in Progress : ");
+  for(int i = 0; i < LF_CALIB_STEPS; i++) {
+    showProgressBar(i, LF_CALIB_STEPS);
+    updateLEDS(i, LF_CALIB_STEPS);
+    qtr.calibrate();
+    delay(20);
+  }
+  Serial.println("Calibration for White Complete!");
+  Serial.println();
+
+  turnLEDS(LOW);
+  delay(1000);
+
+  Serial.println("Calibrating for Black in 2 seconds");
+  flashLEDs(2);
+
+  Serial.println("Calibration in Progress : ");
+  for(int i = 0; i < LF_CALIB_STEPS; i++) {
+    showProgressBar(i, LF_CALIB_STEPS);
+    updateLEDS(i, LF_CALIB_STEPS);
+    qtr.calibrate();
+    delay(20);
+  }
+
+  turnLEDS(LOW);
+  Serial.println("Calibration for Black Complete!");
+  Serial.println();
+}
+
+// starts line following 5 seconds from when called
 void linefollow() {
   Serial.print("Starting in 5 ");
   delay(1000);
@@ -238,16 +237,7 @@ void linefollow() {
   begin();
 }
 
-int checkBounded(int input, int lowBound, int highBound) {
-  if (input >= lowBound && input <= highBound) {
-    return input;
-  } else if (input < lowBound) {
-    return lowBound;
-  } else {
-    return highBound;
-  }
-}
-
+// simple route
 void route(){
   cmForward(20);
   delay(1000);
@@ -255,7 +245,9 @@ void route(){
   delay(1000);
   cmReverse(20);
 }
+// ============ END LINE FOLLOWER CODE ============
 
+// ============ BEGIN MOTOR CODE ============
 void cmForward (int x){
   int start_count = counter;
   Forward();
@@ -357,8 +349,6 @@ void r_motor(int EN_B, int IN3, int IN4, int speed){
 }
 
 void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
-  int switchval1 = digitalRead(SWITCH_1);
-  int switchval2 = digitalRead(SWITCH_2);
 
   int speed = 36;
   //Left Motor
@@ -368,6 +358,7 @@ void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
   r_motor(EN_B, IN3, IN4, speed);
 }
 
+// interrupt that will count movements on the left motor
 void isr()
 {
   b_value = digitalRead(L_OUT_B);
@@ -377,6 +368,7 @@ void isr()
     counter--;
 }
 
+// interrupt that will count movements on the right motor
 void isr2()
 {
   b_value = digitalRead(R_OUT_B);
@@ -385,30 +377,10 @@ void isr2()
   else
     counter--;
 }
-
-void showProgressBar(int step, int totalSteps) {
-  int barWidth = 20; // Width of the progress bar in characters
-  float progress = (float)step / totalSteps;
-  int position = progress * barWidth;
-
-  // Print the progress bar
-  Serial.print("[");
-  for (int i = 0; i < barWidth; i++) {
-    if (i < position) {
-      Serial.print("="); // Filled portion
-    } else if (i == position) {
-      Serial.print(">"); // Moving pointer
-    } else {
-      Serial.print(" "); // Empty space
-    }
-  }
-  Serial.print("] ");
-  Serial.print(int(progress * 100)); // Percentage completed
-  Serial.println("%"); // Print percentage and move to the next line
-}
+// ============ END MOTOR CODE ============
 
 
-//LED CODE
+// ============ BEGIN LED CODE ============
 void turnLEDS(int state){
   for(int i = 0; i < 8; i++)
     digitalWrite(LED_BASE + i, state);
@@ -427,9 +399,20 @@ void updateLEDS(int step, int totalSteps){
   }
 }
 
-#define NUM_RGB_POINTS 10
+void flashLEDs(int count) {
+  for(int i = 0; i < count; i++) {
+    turnLEDS(HIGH);
+    delay(500);
+    turnLEDS(LOW);
+    delay(500);
+  }
+}
+// ============ END LED CODE ============
 
-String getColorName(TEST_COLORS color) {
+
+// ============ BEGIN RGB SENSOR CODE ============
+// returns the name of a color as a String
+String getColorName(MOLE_COLORS color) {
   switch (color) {
     case GREEN: return "Green";
     case BLUE: return "Blue";
@@ -441,15 +424,19 @@ String getColorName(TEST_COLORS color) {
   }
 }
 
+#define NUM_RGB_POINTS 10
+// Tester for recording RGB data to the Serial Monitor. This method will ask the user
+// what color is currently on the moles. Type the color and hit enter, then it will
+// record NUM_RGB_POINTS data points for that color and print them.
 void calibrate_RGB() {
   int index = 0;
-  Serial.println("Which color is being recorded right now?");
-  Serial.println("Options: GREEN, BLUE, WHITE, RED, PURPLE, YELLOW");
-  Serial.println("Type the color name (case-insensitive) or 'quit' to exit.");
 
-  TEST_COLORS currentColor;
+  MOLE_COLORS currentColor;
 
   while (true) {
+    Serial.println("Which color is being recorded right now?");
+    Serial.println("Options: GREEN, BLUE, WHITE, RED, PURPLE, YELLOW");
+    Serial.println("Type the color name (case-insensitive) or 'quit' to exit.");
 
     while (true) {
       if (Serial.available()) {
@@ -485,13 +472,14 @@ void calibrate_RGB() {
     }
 
     for (int i = 0; i < NUM_RGB_POINTS; i++) {
-      get_RGB_data(&index, currentColor);
+      get_RGB_data_point(&index, currentColor);
       delay(100); // Collect data with a small delay
     }
   }
 }
 
-void get_RGB_data(int* index, TEST_COLORS color) {
+// get and record one RGB data point
+void get_RGB_data_point(int* index, MOLE_COLORS color) {
   int time = millis();
   uint16_t r, g, b, c, colorTemp, lux;
 
@@ -504,7 +492,8 @@ void get_RGB_data(int* index, TEST_COLORS color) {
   (*index) += 1;
 }
 
-void record_RGB_data(int index, int r, int g, int b, int c, int colorTemp, int lux, int time, TEST_COLORS color) {
+// method that will print out the RGB values to the serial monitor in CSV row format
+void record_RGB_data(int index, int r, int g, int b, int c, int colorTemp, int lux, int time, MOLE_COLORS color) {
   Serial.print(index); Serial.print(",");
   Serial.print(r); Serial.print(",");
   Serial.print(g); Serial.print(",");
@@ -517,9 +506,8 @@ void record_RGB_data(int index, int r, int g, int b, int c, int colorTemp, int l
   Serial.println();
 }
 
-//RGB SENSOR CODE
-int rgb_calc(){
-  int time = millis();
+// algorithm that will decide which color the sensor is looking at
+MOLE_COLORS get_current_observed_color(){
   uint16_t r, g, b, c, colorTemp, lux;
 
   tcs.getRawData(&r, &g, &b, &c);
@@ -548,15 +536,16 @@ int rgb_calc(){
 
   return -1;
 }
+// ============ END RGB SENSOR CODE ============
 
 
-//PROXIMITY SENSOR
+// ============ BEGIN PROXIMITY SENSOR CODE ============
 int distance_calc(){
   int i, reading, distRight, distClose, dist;
   float volt, voltRight, voltClose, slope;
   bool in_range = false;
 
-  reading = analogRead(SENSOR);
+  reading = analogRead(PROX_SENSOR);
   volt = reading * (5.0 / 1023.0);
 
   //The equation being used to calculate distance is X = ((x2 - x1) / (y2 - y1)) * (Y - y1) + x1
@@ -581,25 +570,38 @@ int distance_calc(){
 
   return dist;
 }
+// ============ END PROXIMITY SENSOR CODE ============
 
-void flashLEDs(int count) {
-  for(int i = 0; i < count; i++) {
-    turnLEDS(HIGH);
-    delay(500);
-    turnLEDS(LOW);
-    delay(500);
+
+// ============ BEGIN MISC. CODE ============
+void showProgressBar(int step, int totalSteps) {
+  int barWidth = 20; // Width of the progress bar in characters
+  float progress = (float)step / totalSteps;
+  int position = progress * barWidth;
+
+  // Print the progress bar
+  Serial.print("[");
+  for (int i = 0; i < barWidth; i++) {
+    if (i < position) {
+      Serial.print("="); // Filled portion
+    } else if (i == position) {
+      Serial.print(">"); // Moving pointer
+    } else {
+      Serial.print(" "); // Empty space
+    }
   }
+  Serial.print("] ");
+  Serial.print(int(progress * 100)); // Percentage completed
+  Serial.println("%"); // Print percentage and move to the next line
 }
 
-  lux = tcs.calculateLux(r, g, b);
-
-  Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
-  Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
-  Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
-  Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
-  Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
-  Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
-  Serial.println(" ");
-
-  int cur = millis() - time;
-  Serial.println(cur);
+int checkBounded(int input, int lowBound, int highBound) {
+  if (input >= lowBound && input <= highBound) {
+    return input;
+  } else if (input < lowBound) {
+    return lowBound;
+  } else {
+    return highBound;
+  }
+}
+// ============ END MISC. CODE ============
