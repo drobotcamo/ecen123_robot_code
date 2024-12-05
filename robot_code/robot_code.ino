@@ -5,7 +5,7 @@
 #define ENABLE_A 2 //Left
 #define ENABLE_B 7//Right
 #define IN_1 3
-#define IN_2 4 
+#define IN_2 4
 #define IN_3 8
 #define IN_4 9
 #define L_OUT_A 20
@@ -35,8 +35,8 @@
 
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
-const int DIST[8] = {5, 10, 15, 20, 25,30, 35, 40};
-const float VOLT[8] = {3.42, 2.84, 1.92, 1.42, 1.11, 0.93, 0.74, 0.62};
+const int DIST[11] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55};
+const float VOLT[11] = {3.11, 2.3, 1.53, 1.21, 1.03, 0.89, 0.73, 0.69, 0.66, 0.61, 0.57};
 
 const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 QTRSensors qtr;
@@ -46,7 +46,7 @@ QTRSensors qtr;
 int b_value = 0;
 int counter = 0;
 
-bool flag = true; 
+bool flag = true;
 
 enum TEST_COLORS {
   GREEN,
@@ -261,7 +261,7 @@ void cmForward (int x){
   Forward();
   Serial.print("counts to complete distance: ");
   Serial.print(int(x / 0.06));
-  
+
   int distance = 0;
   int currentTime = 0;
 
@@ -359,30 +359,30 @@ void r_motor(int EN_B, int IN3, int IN4, int speed){
 void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
   int switchval1 = digitalRead(SWITCH_1);
   int switchval2 = digitalRead(SWITCH_2);
-  
+
   int speed = 36;
   //Left Motor
   l_motor(EN_A,IN1, IN2, speed);
 
   //Right Motor
-  r_motor(EN_B, IN3, IN4, speed); 
+  r_motor(EN_B, IN3, IN4, speed);
 }
 
 void isr()
 {
   b_value = digitalRead(L_OUT_B);
-  if (b_value) 
+  if (b_value)
     counter++;
-  else 
+  else
     counter--;
 }
 
 void isr2()
 {
   b_value = digitalRead(R_OUT_B);
-  if (!b_value) 
+  if (!b_value)
     counter++;
-  else 
+  else
     counter--;
 }
 
@@ -415,15 +415,15 @@ void turnLEDS(int state){
 }
 
 void updateLEDS(int step, int totalSteps){
-  int totalLEDS = 8; 
+  int totalLEDS = 8;
   float progress = (float)step / totalSteps;
   int position = progress * totalLEDS;
 
   for (int i = 0; i < totalLEDS; i++){
     if (i < position)
       digitalWrite(LED_BASE + i, HIGH);
-    else 
-      digitalWrite(LED_BASE + i, LOW);    
+    else
+      digitalWrite(LED_BASE + i, LOW);
   }
 }
 
@@ -453,7 +453,7 @@ void calibrate_RGB() {
 
     while (true) {
       if (Serial.available()) {
-        String message = Serial.readStringUntil('\n'); 
+        String message = Serial.readStringUntil('\n');
         message.trim();
         message.toLowerCase();
 
@@ -533,7 +533,7 @@ int rgb_calc(){
   //Determines Black
   else if(r < 1000 && g < 1000 && b < 1000)
     return 1;
-  
+
   //Determines Red
   else if(r > g && r > b)
     return 2;
@@ -541,18 +541,18 @@ int rgb_calc(){
   //Determines Green
   else if(g > r && g > b)
     return 3;
-  
+
   //Determine Blue
   else if(b > r && b > g)
     return 4;
-  
+
   return -1;
 }
 
 
 //PROXIMITY SENSOR
 int distance_calc(){
-  int i, reading, distRight, distClose, dist; 
+  int i, reading, distRight, distClose, dist;
   float volt, voltRight, voltClose, slope;
   bool in_range = false;
 
@@ -560,21 +560,21 @@ int distance_calc(){
   volt = reading * (5.0 / 1023.0);
 
   //The equation being used to calculate distance is X = ((x2 - x1) / (y2 - y1)) * (Y - y1) + x1
-  for(i = 1; i < 7; i++)
-    //We check to see if the voltage given by the sensor is between 
+  for(i = 1; i < 11; i++)
+    //We check to see if the voltage given by the sensor is between
     if(volt > VOLT[i] && volt < VOLT[i - 1]){
       voltRight = VOLT[i];
       voltClose = VOLT[i - 1];
       distRight = DIST[i];
       distClose = DIST[i - 1];
-      
+
       slope =  (distRight - distClose) / (voltRight - voltClose);
       dist = (slope * (volt - voltClose)) + distClose;
 
-      in_range = true; 
+      in_range = true;
       break;
     }
-  
+
   //If the object is further than 40cm, it is considred out of range
   if(!in_range)
     return -1;
@@ -590,3 +590,16 @@ void flashLEDs(int count) {
     delay(500);
   }
 }
+
+  lux = tcs.calculateLux(r, g, b);
+
+  Serial.print("Color Temp: "); Serial.print(colorTemp, DEC); Serial.print(" K - ");
+  Serial.print("Lux: "); Serial.print(lux, DEC); Serial.print(" - ");
+  Serial.print("R: "); Serial.print(r, DEC); Serial.print(" ");
+  Serial.print("G: "); Serial.print(g, DEC); Serial.print(" ");
+  Serial.print("B: "); Serial.print(b, DEC); Serial.print(" ");
+  Serial.print("C: "); Serial.print(c, DEC); Serial.print(" ");
+  Serial.println(" ");
+
+  int cur = millis() - time;
+  Serial.println(cur);
