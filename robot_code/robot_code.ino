@@ -514,27 +514,27 @@ MOLE_COLORS get_current_observed_color(){
   colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
   lux = tcs.calculateLux(r, g, b);
 
-  //Determines White
-  if(abs(r - b) < 250 && abs(r - g) < 250  && abs(b - g) < 250)
-    return 0;
-
-  //Determines Black
-  else if(r < 1000 && g < 1000 && b < 1000)
-    return 1;
-
-  //Determines Red
-  else if(r > g && r > b)
-    return 2;
-
-  //Determines Green
-  else if(g > r && g > b)
-    return 3;
-
-  //Determine Blue
-  else if(b > r && b > g)
-    return 4;
-
-  return -1;
+  if (b < 5000) {
+        if (r < 3000) {
+            return GREEN;
+        } else {
+            if (lux < 638) {
+                return RED;
+            } else {
+                return YELLOW;
+            }
+        }
+  } else {
+        if (r < 2000) {
+            return BLUE;
+        } else {
+            if (lux < 0) { 
+                return PURPLE;
+            } else {
+                return WHITE;
+            }
+        }
+  }
 }
 // ============ END RGB SENSOR CODE ============
 
