@@ -29,6 +29,7 @@ const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 // End Line Follower Pins
 
 #define LED_BASE 22
+#define G_LED 30
 #define PROX_SENSOR A15
 #define RESTART_BUTTON 39
 // ============ END PIN DEFINITIONS ============
@@ -79,6 +80,7 @@ void setup(){
   for(int i = 0; i < 8; i++) {
     pinMode(LED_BASE + i, OUTPUT);
   }
+  pinMode(G_LED, OUTPUT);
 
   // initialize color sensor
   if (tcs.begin()) {
@@ -105,13 +107,14 @@ void setup(){
 
   Serial.println("Starting in 2 seconds");
   delay(2000);
-  calibrate_RGB();
+  //calibrate_RGB();
 }
 
 void loop(){
-  if (!digitalRead(RESTART_BUTTON)) {
+  //if (!digitalRead(RESTART_BUTTON)) {
     // loop code here maybe?
-  }
+  //}
+  calibrateLineFollower();
 }
 
 // ============ BEGIN LINE FOLLOWER CODE ============
@@ -190,7 +193,9 @@ void begin() {
 void calibrateLineFollower() {
   turnLEDS(LOW);
   Serial.println("Calibrating for White in 2 seconds");
+  digitalWrite(G_LED, HIGH);
   flashLEDs(2);
+  digitalWrite(G_LED, LOW);
 
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < LF_CALIB_STEPS; i++) {
