@@ -10,9 +10,9 @@
 #define IN_2 4
 #define IN_3 8
 #define IN_4 9
-#define L_OUT_A 20
+#define L_OUT_A 19
 #define L_OUT_B 46
-#define R_OUT_A 21
+#define R_OUT_A 18
 #define R_OUT_B 44
 // End Motor Pins
 
@@ -42,7 +42,7 @@ const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 const int DIST[11] = {5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55};
 const float VOLT[11] = {3.11, 2.3, 1.53, 1.21, 1.03, 0.89, 0.73, 0.69, 0.66, 0.61, 0.57};
 
-// color sensor 
+// color sensor
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
 
 // line follower
@@ -185,44 +185,45 @@ void begin() {
   Brake();
 }
 
-// calibrate the line follower in two phases -> first expose all of 
-// the LF sensors to the lightest color they will see (wood) and
-// then to the darkest color (black tape)
+// calibrate the line follower in two phases -> first expose all of
+// the LF sensors to the darkest color they will see (black tape) and
+// then to the lightest color (wood)
 // note: it's important that every one of the eight sensors sees
-// black, not just the middle few. 
+// black, not just the middle few.
 void calibrateLineFollower() {
   turnLEDS(LOW);
-  Serial.println("Calibrating for White in 2 seconds");
+  // calibrate for black
+  Serial.println("Calibrating for Black");
   digitalWrite(G_LED, HIGH);
-  flashLEDs(2);
+  flashLEDs(3);
   digitalWrite(G_LED, LOW);
-
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < LF_CALIB_STEPS; i++) {
     showProgressBar(i, LF_CALIB_STEPS);
     updateLEDS(i, LF_CALIB_STEPS);
     qtr.calibrate();
-    delay(20);
+    delay(10);
   }
-  Serial.println("Calibration for White Complete!");
-  Serial.println();
-
-  turnLEDS(LOW);
-  delay(1000);
-
-  Serial.println("Calibrating for Black in 2 seconds");
-  flashLEDs(2);
-
-  Serial.println("Calibration in Progress : ");
-  for(int i = 0; i < LF_CALIB_STEPS; i++) {
-    showProgressBar(i, LF_CALIB_STEPS);
-    updateLEDS(i, LF_CALIB_STEPS);
-    qtr.calibrate();
-    delay(20);
-  }
-
-  turnLEDS(LOW);
   Serial.println("Calibration for Black Complete!");
+  Serial.println();
+  turnLEDS(LOW);
+  delay(300);
+
+  cmReverse(3);
+  pivotDegrees(10);
+
+  Serial.println("Calibrating for White");
+  flashLEDs(3);
+  Serial.println("Calibration in Progress : ");
+  for(int i = 0; i < LF_CALIB_STEPS; i++) {
+    showProgressBar(i, LF_CALIB_STEPS);
+    updateLEDS(i, LF_CALIB_STEPS);
+    qtr.calibrate();
+    delay(20);
+  }
+  turnLEDS(LOW);
+
+  Serial.println("Calibration for White Complete!");
   Serial.println();
 }
 
@@ -246,9 +247,8 @@ void linefollow() {
 void route(){
   cmForward(20);
   delay(1000);
-  cmForward(20);
-  delay(1000);
   cmReverse(20);
+  delay(1000);
 }
 // ============ END LINE FOLLOWER CODE ============
 
@@ -292,19 +292,18 @@ void cmReverse (int x){
 
   int prevDist = 0;
   int prevMillis = 0;
-  while (counter < start_count + int(x / 0.0194)) {
+  while (counter > start_count - int(x / 0.0194)) {
     Serial.print("Count:");
     Serial.println(counter);
-    distance = counter * 0.06;
+    distance = counter * 0.0194;
     Serial.print("Distance:");
-    Serial.println(counter * 0.06);
+    Serial.println(distance);
 
     currentTime = millis();
     Serial.print("Speed:");
-    Serial.println((counter * 0.06) / (currentTime - prevMillis));
-    prevDist = distance;
+    Serial.println(((counter - prevDist)*0.0194 / (currentTime - prevMillis)) * 1000);
+    prevDist = counter;
     prevMillis = currentTime;
-
   }
   Brake();
 }
@@ -368,9 +367,9 @@ void isr()
 {
   b_value = digitalRead(L_OUT_B);
   if (b_value)
-    counter++;
-  else
     counter--;
+  else
+    counter++;
 }
 
 // interrupt that will count movements on the right motor
@@ -378,9 +377,9 @@ void isr2()
 {
   b_value = digitalRead(R_OUT_B);
   if (!b_value)
-    counter++;
-  else
     counter--;
+  else
+    counter++;
 }
 // ============ END MOTOR CODE ============
 
@@ -407,9 +406,9 @@ void updateLEDS(int step, int totalSteps){
 void flashLEDs(int count) {
   for(int i = 0; i < count; i++) {
     turnLEDS(HIGH);
-    delay(500);
+    delay(100);
     turnLEDS(LOW);
-    delay(500);
+    delay(100);
   }
 }
 // ============ END LED CODE ============
@@ -444,7 +443,7 @@ void calibrate_RGB() {
     Serial.println("Type the color name (case-insensitive) or 'quit' to exit.");
 
     while (true) {
-      if (Serial.available()) {
+      if (Serial.available() > 0) {
         String message = Serial.readStringUntil('\n');
         message.trim();
         message.toLowerCase();
@@ -475,7 +474,6 @@ void calibrate_RGB() {
         }
       }
     }
-
     for (int i = 0; i < NUM_RGB_POINTS; i++) {
       get_RGB_data_point(&index, currentColor);
       delay(100); // Collect data with a small delay
@@ -533,7 +531,7 @@ MOLE_COLORS get_current_observed_color(){
         if (r < 2000) {
             return BLUE;
         } else {
-            if (lux < 0) { 
+            if (lux < 0) {
                 return PURPLE;
             } else {
                 return WHITE;
