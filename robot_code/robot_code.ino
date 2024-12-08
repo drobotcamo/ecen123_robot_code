@@ -1,6 +1,7 @@
 #include <QTRSensors.h>
 #include <Wire.h>
 #include "Adafruit_TCS34725.h"
+#include <Servo.h>
 
 // ============ BEGIN PIN DEFINITIONS ============
 // Motor Pins
@@ -14,6 +15,7 @@
 #define L_OUT_B 46
 #define R_OUT_A 18
 #define R_OUT_B 44
+#define ARM_SERVO 10
 // End Motor Pins
 
 // Line Follower Pins
@@ -48,6 +50,10 @@ Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS347
 // line follower
 QTRSensors qtr;
 #define LF_CALIB_STEPS 40
+
+// servo arm
+Servo myservo;
+# define SERVO_STARTING_POINT 95
 
 int b_value = 0;
 int counter = 0;
@@ -98,6 +104,9 @@ void setup(){
   attachInterrupt(digitalPinToInterrupt(L_OUT_A), isr, RISING);
   attachInterrupt(digitalPinToInterrupt(R_OUT_A), isr2, RISING);
 
+  // declare servo
+  myservo.attach(ARM_SERVO);
+
   // make sure motors are off
   digitalWrite(ENABLE_A, LOW);
   digitalWrite(ENABLE_B, LOW);
@@ -108,13 +117,24 @@ void setup(){
   Serial.println("Starting in 2 seconds");
   delay(2000);
   //calibrate_RGB();
+  pivotDegrees(360, 255);
+  delay(500);
+  pivotDegrees(360, 255);
+  delay(500);
+  pivotDegrees(360, 255);
+  delay(500);
+  pivotDegrees(360, 255);
+  delay(500);
+  // myservo.write(SERVO_STARTING_POINT);
+  // delay(500);
+  // whack_mole();
 }
 
 void loop(){
   //if (!digitalRead(RESTART_BUTTON)) {
     // loop code here maybe?
   //}
-  calibrateLineFollower();
+  // calibrateLineFollower();
 }
 
 // ============ BEGIN LINE FOLLOWER CODE ============
@@ -209,8 +229,8 @@ void calibrateLineFollower() {
   turnLEDS(LOW);
   delay(300);
 
-  cmReverse(3);
-  pivotDegrees(10);
+  // cmReverse(3);
+  // pivotDegrees(10);
 
   Serial.println("Calibrating for White");
   flashLEDs(3);
@@ -354,7 +374,7 @@ void r_motor(int EN_B, int IN3, int IN4, int speed){
 
 void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
 
-  int speed = 36;
+  int speed = 72;
   //Left Motor
   l_motor(EN_A,IN1, IN2, speed);
 
@@ -380,6 +400,39 @@ void isr2()
     counter--;
   else
     counter++;
+}
+
+void pivotDegrees(int degree, int speed) {
+  int duration = int(abs(degree) * 8.9);
+  int start = millis();
+  if (degree > 0) {
+    while ((millis() - start) < duration) {
+      motors(HIGH, LOW, HIGH, HIGH, LOW, HIGH);
+      l_motor(HIGH, LOW, HIGH, speed);
+      r_motor(HIGH, LOW, HIGH, speed);
+    }
+    Brake();
+  } else {
+    while ((millis() - start) < duration) {
+      motors(HIGH, HIGH, LOW, HIGH, HIGH, LOW);
+      l_motor(HIGH, HIGH, LOW, speed);
+      r_motor(HIGH, HIGH, LOW, speed);
+    }
+    Brake();
+  }
+} 
+
+void whack_mole() {
+  // hammer down
+  for(int i = SERVO_STARTING_POINT; i -= 5; i > SERVO_STARTING_POINT - 95) {
+    myservo.write(i);
+    delay(15);
+  }
+  delay(50);
+  for(int i = SERVO_STARTING_POINT - 95; i += 5; i < SERVO_STARTING_POINT) {
+    myservo.write(i);
+    delay(15);
+  }
 }
 // ============ END MOTOR CODE ============
 
