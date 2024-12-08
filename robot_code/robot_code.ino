@@ -53,7 +53,8 @@ QTRSensors qtr;
 
 // servo arm
 Servo myservo;
-# define SERVO_STARTING_POINT 95
+#define SERVO_STARTING_POINT 0
+#define SERVO_ENDING_POINT 120
 
 int b_value = 0;
 int counter = 0;
@@ -106,28 +107,28 @@ void setup(){
 
   // declare servo
   myservo.attach(ARM_SERVO);
+  myservo.write(SERVO_STARTING_POINT);
 
   // make sure motors are off
   digitalWrite(ENABLE_A, LOW);
   digitalWrite(ENABLE_B, LOW);
 
-  // calibrateLineFollower();
-  // linefollow();
-
   Serial.println("Starting in 2 seconds");
   delay(2000);
+
   //calibrate_RGB();
-  pivotDegrees(360, 255);
-  delay(500);
-  pivotDegrees(360, 255);
-  delay(500);
-  pivotDegrees(360, 255);
-  delay(500);
-  pivotDegrees(360, 255);
-  delay(500);
-  // myservo.write(SERVO_STARTING_POINT);
+  // pivotDegrees(360, 255);
   // delay(500);
-  // whack_mole();
+  // pivotDegrees(360, 255);
+  // delay(500);
+  // pivotDegrees(360, 255);
+  // delay(500);
+  // pivotDegrees(360, 255);
+  // delay(500);
+  whack_mole();
+  delay(1000);
+  whack_mole();
+  delay(1000);
 }
 
 void loop(){
@@ -424,14 +425,15 @@ void pivotDegrees(int degree, int speed) {
 
 void whack_mole() {
   // hammer down
-  for(int i = SERVO_STARTING_POINT; i -= 5; i > SERVO_STARTING_POINT - 95) {
-    myservo.write(i);
-    delay(15);
+  for(int pos = SERVO_STARTING_POINT; pos <= SERVO_ENDING_POINT; pos += 25) {
+    myservo.write(pos);
+    delay(30);
   }
-  delay(50);
-  for(int i = SERVO_STARTING_POINT - 95; i += 5; i < SERVO_STARTING_POINT) {
-    myservo.write(i);
-    delay(15);
+  delay(100);
+  // hammer up
+  for(int pos = SERVO_ENDING_POINT; pos >= SERVO_STARTING_POINT; pos -= 25) {
+    myservo.write(pos);
+    delay(30);
   }
 }
 // ============ END MOTOR CODE ============
