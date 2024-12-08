@@ -54,7 +54,7 @@ QTRSensors qtr;
 // servo arm
 Servo myservo;
 #define SERVO_STARTING_POINT 0
-#define SERVO_ENDING_POINT 120
+#define SERVO_ENDING_POINT 100
 
 int b_value = 0;
 int counter = 0;
@@ -424,14 +424,15 @@ void pivotDegrees(int degree, int speed) {
 } 
 
 void whack_mole() {
+  // wacks at a max distance of 10cm away
   // hammer down
-  for(int pos = SERVO_STARTING_POINT; pos <= SERVO_ENDING_POINT; pos += 25) {
+  for(int pos = SERVO_STARTING_POINT; pos <= SERVO_ENDING_POINT; pos += 20) {
     myservo.write(pos);
     delay(30);
   }
   delay(100);
   // hammer up
-  for(int pos = SERVO_ENDING_POINT; pos >= SERVO_STARTING_POINT; pos -= 25) {
+  for(int pos = SERVO_ENDING_POINT; pos >= SERVO_STARTING_POINT; pos -= 20) {
     myservo.write(pos);
     delay(30);
   }
