@@ -125,10 +125,14 @@ void setup(){
   // delay(500);
   // pivotDegrees(360, 255);
   // delay(500);
-  whack_mole();
+  // whack_mole();
+  // delay(1000);
+  // whack_mole();
+  // delay(1000);
+
+  calibrateLineFollower();
   delay(1000);
-  whack_mole();
-  delay(1000);
+  linefollow(12000);
 }
 
 void loop(){
@@ -140,8 +144,8 @@ void loop(){
 
 // ============ BEGIN LINE FOLLOWER CODE ============
 // this method will attempt to follow a line for ~duration~ milliseconds
-void begin() {
-  unsigned long duration = 120000;
+void linefollow(unsigned long input_duration) {
+  unsigned long duration = input_duration;
   unsigned long start = millis();
   uint16_t sensors[8];
 
@@ -230,8 +234,8 @@ void calibrateLineFollower() {
   turnLEDS(LOW);
   delay(300);
 
-  // cmReverse(3);
-  // pivotDegrees(10);
+  cmForward(5);
+  pivotDegrees(35, 255);
 
   Serial.println("Calibrating for White");
   flashLEDs(3);
@@ -246,22 +250,8 @@ void calibrateLineFollower() {
 
   Serial.println("Calibration for White Complete!");
   Serial.println();
-}
-
-// starts line following 5 seconds from when called
-void linefollow() {
-  Serial.print("Starting in 5 ");
-  delay(1000);
-  Serial.print("4 ");
-  delay(1000);
-  Serial.print("3 ");
-  delay(1000);
-  Serial.print("2 ");
-  delay(1000);
-  Serial.print("1 ");
-  delay(1000);
-  Serial.println("GO!");
-  begin();
+  pivotDegrees(-35, 255);
+  cmReverse(5);
 }
 
 // simple route
