@@ -136,20 +136,29 @@ void setup(){
   // whack_mole();
   // customDelay(1000);
 
+  // calibrate
   calibrateLineFollower();
   customDelay(1000);
+  // follow line until coins
   linefollow(13450);
+  // knock coins
   pivotDegrees(-145,255);
+  // reset
   pivotDegrees(145,255);
   customDelay(500);
+  // face button
   pivotDegrees(-115,255);
   customDelay(1000);
+  // drive to line
   millisecondsForward(1500);
   customDelay(1000);
-  linefollow(4000);
+  // hit button
+  linefollow(4500);
   customDelay(1000);
-  millisecondsReverse(3000);
+  // go back
+  millisecondsReverse(5000);
   customDelay(1000);
+
   MOLE_COLORS currentColor = BUTTON;
   MOLE_COLORS nextColor = RED;
 
@@ -163,7 +172,7 @@ void setup(){
     customDelay(50);
     currentColor = nextColor;
     nextColor = get_current_observed_color();
-    millisecondsReverse(3333);
+    millisecondsReverse(5000);
   }
 }
 
@@ -269,7 +278,7 @@ void calibrateLineFollower() {
   customDelay(300);
 
   millisecondsForward(400);
-  pivotDegrees(35, 255);
+  pivotDegrees(45, 255);
 
 
   Serial.println("Calibrating for White");
@@ -286,7 +295,7 @@ void calibrateLineFollower() {
 
   Serial.println("Calibration for White Complete!");
   Serial.println();
-  pivotDegrees(-35, 255);
+  pivotDegrees(-45, 255);
   millisecondsReverse(400);
 }
 
@@ -378,11 +387,23 @@ void millisecondsReverse(int x) {
 }
 
 void Forward(){
-  motors(HIGH, HIGH, LOW, HIGH, LOW, HIGH);
+  // motors(HIGH, HIGH, LOW, HIGH, LOW, HIGH);
+  int speed = 72;
+  //Left Motor
+  l_motor(HIGH, HIGH, LOW, speed * 1.35);
+
+  //Right Motor
+  r_motor(HIGH, LOW, HIGH, speed);
 }
 
 void Reverse(){
-  motors(HIGH, LOW, HIGH, HIGH, HIGH, LOW);
+  // motors(HIGH, LOW, HIGH, HIGH, HIGH, LOW);
+  int speed = 72;
+  //Left Motor
+  l_motor(HIGH, LOW, HIGH, speed * 1.35);
+
+  //Right Motor
+  r_motor(HIGH, HIGH, LOW, speed);
 }
 
 void Brake(){
@@ -452,8 +473,8 @@ void isr2()
 }
 
 void pivotDegrees(int degree, int speed) {
-  int duration = int(abs(degree) * 9.15);
-  int start = millis();
+  unsigned long duration = int(abs(degree) * 10.85);
+  unsigned long start = millis();
   if (degree > 0) {
     while ((millis() - start) < duration) {
       motors(HIGH, LOW, HIGH, HIGH, LOW, HIGH);
