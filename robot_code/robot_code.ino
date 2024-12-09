@@ -132,7 +132,14 @@ void setup(){
 
   calibrateLineFollower();
   delay(1000);
-  linefollow(12000);
+  linefollow(13450);
+  pivotDegrees(-145,255);
+  pivotDegrees(145,255);
+  delay(500);
+  pivotDegrees(-115,255);
+  millisecondsForward(1500);
+  delay(1000);
+  linefollow(3500);
 }
 
 void loop(){
@@ -319,6 +326,15 @@ void cmReverse (int x){
   Brake();
 }
 
+void millisecondsForward(int x) {
+  int currentTime = millis();
+  Forward();
+  while ((millis() - currentTime) < x) {
+  
+  }
+  Brake();
+}
+
 void Forward(){
   motors(HIGH, HIGH, LOW, HIGH, LOW, HIGH);
 }
@@ -365,7 +381,7 @@ void r_motor(int EN_B, int IN3, int IN4, int speed){
 
 void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
 
-  int speed = 72;
+  int speed = 255;
   //Left Motor
   l_motor(EN_A,IN1, IN2, speed);
 
@@ -398,14 +414,14 @@ void pivotDegrees(int degree, int speed) {
   int start = millis();
   if (degree > 0) {
     while ((millis() - start) < duration) {
-      motors(HIGH, LOW, HIGH, HIGH, LOW, HIGH);
+      // motors(HIGH, LOW, HIGH, HIGH, LOW, HIGH);
       l_motor(HIGH, LOW, HIGH, speed);
       r_motor(HIGH, LOW, HIGH, speed);
     }
     Brake();
   } else {
     while ((millis() - start) < duration) {
-      motors(HIGH, HIGH, LOW, HIGH, HIGH, LOW);
+      // motors(HIGH, HIGH, LOW, HIGH, HIGH, LOW);
       l_motor(HIGH, HIGH, LOW, speed);
       r_motor(HIGH, HIGH, LOW, speed);
     }
