@@ -137,9 +137,12 @@ void setup(){
   pivotDegrees(145,255);
   delay(500);
   pivotDegrees(-115,255);
+  delay(1000);
   millisecondsForward(1500);
   delay(1000);
-  linefollow(3500);
+  linefollow(4000);
+  delay(1000);
+  millisecondsReverse(3000);
 }
 
 void loop(){
@@ -241,8 +244,9 @@ void calibrateLineFollower() {
   turnLEDS(LOW);
   delay(300);
 
-  cmForward(5);
+  millisecondsForward(400);
   pivotDegrees(35, 255);
+
 
   Serial.println("Calibrating for White");
   flashLEDs(3);
@@ -258,7 +262,7 @@ void calibrateLineFollower() {
   Serial.println("Calibration for White Complete!");
   Serial.println();
   pivotDegrees(-35, 255);
-  cmReverse(5);
+  millisecondsReverse(400);
 }
 
 // simple route
@@ -335,6 +339,15 @@ void millisecondsForward(int x) {
   Brake();
 }
 
+void millisecondsReverse(int x) {
+  int currentTime = millis();
+  Reverse();
+  while ((millis() - currentTime) < x) {
+  
+  }
+  Brake();
+}
+
 void Forward(){
   motors(HIGH, HIGH, LOW, HIGH, LOW, HIGH);
 }
@@ -381,7 +394,7 @@ void r_motor(int EN_B, int IN3, int IN4, int speed){
 
 void motors(int EN_A, int IN1, int IN2, int EN_B, int IN3, int IN4){
 
-  int speed = 255;
+  int speed = 72;
   //Left Motor
   l_motor(EN_A,IN1, IN2, speed);
 
@@ -414,14 +427,14 @@ void pivotDegrees(int degree, int speed) {
   int start = millis();
   if (degree > 0) {
     while ((millis() - start) < duration) {
-      // motors(HIGH, LOW, HIGH, HIGH, LOW, HIGH);
+      motors(HIGH, LOW, HIGH, HIGH, LOW, HIGH);
       l_motor(HIGH, LOW, HIGH, speed);
       r_motor(HIGH, LOW, HIGH, speed);
     }
     Brake();
   } else {
     while ((millis() - start) < duration) {
-      // motors(HIGH, HIGH, LOW, HIGH, HIGH, LOW);
+      motors(HIGH, HIGH, LOW, HIGH, HIGH, LOW);
       l_motor(HIGH, HIGH, LOW, speed);
       r_motor(HIGH, HIGH, LOW, speed);
     }
