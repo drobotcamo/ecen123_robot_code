@@ -32,6 +32,7 @@ const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 
 #define LED_BASE 22
 #define G_LED 30
+#define R_LED 31
 #define PROX_SENSOR A15
 #define RESTART_BUTTON 39
 // ============ END PIN DEFINITIONS ============
@@ -46,6 +47,9 @@ const float VOLT[11] = {3.11, 2.3, 1.53, 1.21, 1.03, 0.89, 0.73, 0.69, 0.66, 0.6
 
 // color sensor
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
+
+
+const int MOLE_DEGREES[7] = {-90, -60, -30, 0, 30, 60, 90};
 
 // line follower
 QTRSensors qtr;
@@ -63,6 +67,7 @@ enum MOLE_COLORS {
   GREEN,
   BLUE,
   WHITE,
+  BUTTON,
   RED,
   PURPLE,
   YELLOW
@@ -88,6 +93,7 @@ void setup(){
     pinMode(LED_BASE + i, OUTPUT);
   }
   pinMode(G_LED, OUTPUT);
+  pinMode(R_LED, OUTPUT);
 
   // initialize color sensor
   if (tcs.begin()) {
@@ -114,35 +120,51 @@ void setup(){
   digitalWrite(ENABLE_B, LOW);
 
   Serial.println("Starting in 2 seconds");
-  delay(2000);
+  customDelay(2000);
 
   //calibrate_RGB();
   // pivotDegrees(360, 255);
-  // delay(500);
+  // customDelay(500);
   // pivotDegrees(360, 255);
-  // delay(500);
+  // customDelay(500);
   // pivotDegrees(360, 255);
-  // delay(500);
+  // customDelay(500);
   // pivotDegrees(360, 255);
-  // delay(500);
+  // customDelay(500);
   // whack_mole();
-  // delay(1000);
+  // customDelay(1000);
   // whack_mole();
-  // delay(1000);
+  // customDelay(1000);
 
   calibrateLineFollower();
-  delay(1000);
+  customDelay(1000);
   linefollow(13450);
   pivotDegrees(-145,255);
   pivotDegrees(145,255);
-  delay(500);
+  customDelay(500);
   pivotDegrees(-115,255);
-  delay(1000);
+  customDelay(1000);
   millisecondsForward(1500);
-  delay(1000);
+  customDelay(1000);
   linefollow(4000);
-  delay(1000);
+  customDelay(1000);
   millisecondsReverse(3000);
+  customDelay(1000);
+  MOLE_COLORS currentColor = BUTTON;
+  MOLE_COLORS nextColor = RED;
+
+  unsigned long start = millis();
+  unsigned long duration = 120000;
+  while(millis() - start < duration){
+    whacAMole(currentColor, nextColor);
+    millisecondsForward(1000);
+    linefollow(2333);
+    whack_mole();
+    customDelay(50);
+    currentColor = nextColor;
+    nextColor = get_current_observed_color();
+    millisecondsReverse(3333);
+  }
 }
 
 void loop(){
@@ -217,6 +239,7 @@ void linefollow(unsigned long input_duration) {
       l_motor(HIGH, LOW, HIGH, -1.0 * leftMotorSpeed);
     }
   }
+  turnLEDS(LOW);
   Brake();
 }
 
@@ -237,12 +260,13 @@ void calibrateLineFollower() {
     showProgressBar(i, LF_CALIB_STEPS);
     updateLEDS(i, LF_CALIB_STEPS);
     qtr.calibrate();
-    delay(10);
+    customDelay(10);
   }
+
   Serial.println("Calibration for Black Complete!");
   Serial.println();
   turnLEDS(LOW);
-  delay(300);
+  customDelay(300);
 
   millisecondsForward(400);
   pivotDegrees(35, 255);
@@ -255,8 +279,9 @@ void calibrateLineFollower() {
     showProgressBar(i, LF_CALIB_STEPS);
     updateLEDS(i, LF_CALIB_STEPS);
     qtr.calibrate();
-    delay(20);
+    customDelay(20);
   }
+
   turnLEDS(LOW);
 
   Serial.println("Calibration for White Complete!");
@@ -268,9 +293,9 @@ void calibrateLineFollower() {
 // simple route
 void route(){
   cmForward(20);
-  delay(1000);
+  customDelay(1000);
   cmReverse(20);
-  delay(1000);
+  customDelay(1000);
 }
 // ============ END LINE FOLLOWER CODE ============
 
@@ -331,20 +356,24 @@ void cmReverse (int x){
 }
 
 void millisecondsForward(int x) {
-  int currentTime = millis();
+  unsigned long currentTime = millis();
   Forward();
+  digitalWrite(G_LED, HIGH);
   while ((millis() - currentTime) < x) {
-  
+    customDelay(1);
   }
+  digitalWrite(G_LED, LOW);
   Brake();
 }
 
 void millisecondsReverse(int x) {
-  int currentTime = millis();
+  unsigned long starttime = millis();
   Reverse();
-  while ((millis() - currentTime) < x) {
-  
+  digitalWrite(R_LED, HIGH);
+  while ((millis() - starttime) < x) {
+    customDelay(1);
   }
+  digitalWrite(R_LED, LOW);
   Brake();
 }
 
@@ -423,7 +452,7 @@ void isr2()
 }
 
 void pivotDegrees(int degree, int speed) {
-  int duration = int(abs(degree) * 8.9);
+  int duration = int(abs(degree) * 9.15);
   int start = millis();
   if (degree > 0) {
     while ((millis() - start) < duration) {
@@ -447,13 +476,13 @@ void whack_mole() {
   // hammer down
   for(int pos = SERVO_STARTING_POINT; pos <= SERVO_ENDING_POINT; pos += 20) {
     myservo.write(pos);
-    delay(30);
+    customDelay(30);
   }
-  delay(100);
+  customDelay(100);
   // hammer up
   for(int pos = SERVO_ENDING_POINT; pos >= SERVO_STARTING_POINT; pos -= 20) {
     myservo.write(pos);
-    delay(30);
+    customDelay(30);
   }
 }
 // ============ END MOTOR CODE ============
@@ -481,9 +510,9 @@ void updateLEDS(int step, int totalSteps){
 void flashLEDs(int count) {
   for(int i = 0; i < count; i++) {
     turnLEDS(HIGH);
-    delay(100);
+    customDelay(100);
     turnLEDS(LOW);
-    delay(100);
+    customDelay(100);
   }
 }
 // ============ END LED CODE ============
@@ -551,7 +580,7 @@ void calibrate_RGB() {
     }
     for (int i = 0; i < NUM_RGB_POINTS; i++) {
       get_RGB_data_point(&index, currentColor);
-      delay(100); // Collect data with a small delay
+      customDelay(100); // Collect data with a small customDelay
     }
   }
 }
@@ -650,6 +679,27 @@ int distance_calc(){
 }
 // ============ END PROXIMITY SENSOR CODE ============
 
+// ============ BEGIN WHAC A MOLE CODE ============
+
+void whacAMole(int curMole, int nextMole) {
+  int degrees; 
+  if(curMole > 2){
+    if(nextMole > 2)
+      degrees = -1 * (MOLE_DEGREES[curMole] - MOLE_DEGREES[nextMole]);
+    else
+      degrees = MOLE_DEGREES[nextMole] - MOLE_DEGREES[curMole];
+  }
+  else{
+    if(nextMole > 2)
+      degrees = MOLE_DEGREES[nextMole] - MOLE_DEGREES[curMole];
+    else 
+      degrees = -1 * (MOLE_DEGREES[curMole] - MOLE_DEGREES[nextMole]);
+  }
+
+  pivotDegrees(degrees, 255);
+}
+
+// ============ END WHAC A MOLE CODE ============
 
 // ============ BEGIN MISC. CODE ============
 void showProgressBar(int step, int totalSteps) {
@@ -682,4 +732,11 @@ int checkBounded(int input, int lowBound, int highBound) {
     return highBound;
   }
 }
+
+int customDelay(unsigned long dur) {
+  unsigned long start = millis();
+  while(millis() - start < dur) {
+  }
+}
 // ============ END MISC. CODE ============
+
