@@ -151,7 +151,7 @@ void setup(){
   calibrateLineFollower();
   customDelay(1000);
   // follow line until coins
-  linefollow(12500);
+  linefollow(12000);
   // knock coins
    pivotDegrees(-145,255);
    // reset
@@ -164,21 +164,21 @@ void setup(){
    millisecondsForward(1500);
    customDelay(1000);
    // hit button
-   linefollow(4500);
+   linefollow(2500);
    customDelay(1000);
    // go back
-   millisecondsReverse(4000);
+   millisecondsReverse(3500);
    customDelay(1000);
 
    MOLE_COLORS currentColor = BUTTON;
    MOLE_COLORS nextColor = RED;
 
   unsigned long start = millis();
-  unsigned long duration = 10000;
+  unsigned long duration = 120000;
   while(millis() - start < duration){
      whacAMole(currentColor, nextColor);
      millisecondsForward(1833);
-     linefollow(1700);
+     linefollow(1300);
      whack_mole();
      customDelay(100);
      digitalWrite(LED_base + currentColor, LOW);
@@ -193,7 +193,7 @@ void setup(){
      }
      digitalWrite(LED_base + nextColor, HIGH);
      //millisecondsReverse(3333);
-     millisecondsReverse(3000);
+     millisecondsReverse(3500);
    }
 
 }
