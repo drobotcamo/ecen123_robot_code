@@ -31,10 +31,19 @@ const uint8_t LF_PINS[8] = {LF_1, LF_2, LF_3, LF_4, LF_5, LF_6, LF_7, LF_8};
 // End Line Follower Pins
 
 #define LED_BASE 22
-#define G_LED 30
-#define R_LED 31
+//#define G_LED 30
+//#define R_LED 31
 #define PROX_SENSOR A15
 #define RESTART_BUTTON 39
+
+// LED pins for color sensor
+#define Y_LED_C 36
+#define P_LED_C 35
+#define R_LED_C 34
+#define W_LED_C 32
+#define B_LED_C 31
+#define G_LED_C 30
+
 // ============ END PIN DEFINITIONS ============
 
 
@@ -72,6 +81,7 @@ enum MOLE_COLORS {
   PURPLE,
   YELLOW
 };
+int LED_base = 30;
 // ============ END DECLARATIONS ============
 
 void setup(){
@@ -92,8 +102,8 @@ void setup(){
   for(int i = 0; i < 8; i++) {
     pinMode(LED_BASE + i, OUTPUT);
   }
-  pinMode(G_LED, OUTPUT);
-  pinMode(R_LED, OUTPUT);
+  for(int i = 0; i < 7; i++)
+    pinMode(LED_base + i, OUTPUT);
 
   // initialize color sensor
   if (tcs.begin()) {
@@ -136,44 +146,56 @@ void setup(){
   // whack_mole();
   // customDelay(1000);
 
+
   // calibrate
   calibrateLineFollower();
   customDelay(1000);
   // follow line until coins
-  linefollow(13450);
+  linefollow(12500);
   // knock coins
-  pivotDegrees(-145,255);
-  // reset
-  pivotDegrees(145,255);
-  customDelay(500);
-  // face button
-  pivotDegrees(-115,255);
-  customDelay(1000);
-  // drive to line
-  millisecondsForward(1500);
-  customDelay(1000);
-  // hit button
-  linefollow(4500);
-  customDelay(1000);
-  // go back
-  millisecondsReverse(5000);
-  customDelay(1000);
+   pivotDegrees(-145,255);
+   // reset
+   pivotDegrees(145,255);
+   customDelay(500);
+   // face button
+   pivotDegrees(-105,255);
+   customDelay(1000);
+   // drive to line
+   millisecondsForward(1500);
+   customDelay(1000);
+   // hit button
+   linefollow(4500);
+   customDelay(1000);
+   // go back
+   millisecondsReverse(4000);
+   customDelay(1000);
 
-  MOLE_COLORS currentColor = BUTTON;
-  MOLE_COLORS nextColor = RED;
+   MOLE_COLORS currentColor = BUTTON;
+   MOLE_COLORS nextColor = RED;
 
   unsigned long start = millis();
-  unsigned long duration = 120000;
+  unsigned long duration = 10000;
   while(millis() - start < duration){
-    whacAMole(currentColor, nextColor);
-    millisecondsForward(1000);
-    linefollow(2333);
-    whack_mole();
-    customDelay(50);
-    currentColor = nextColor;
-    nextColor = get_current_observed_color();
-    millisecondsReverse(5000);
-  }
+     whacAMole(currentColor, nextColor);
+     millisecondsForward(1833);
+     linefollow(1700);
+     whack_mole();
+     customDelay(100);
+     digitalWrite(LED_base + currentColor, LOW);
+     currentColor = nextColor;
+     nextColor = get_current_observed_color();
+     // check for color read error (purple vs blue)
+     if (currentColor == nextColor) {
+      if (currentColor == BLUE)
+        nextColor = PURPLE;
+      if (currentColor == PURPLE)
+        nextColor = BLUE;
+     }
+     digitalWrite(LED_base + nextColor, HIGH);
+     //millisecondsReverse(3333);
+     millisecondsReverse(3000);
+   }
+
 }
 
 void loop(){
@@ -261,9 +283,9 @@ void calibrateLineFollower() {
   turnLEDS(LOW);
   // calibrate for black
   Serial.println("Calibrating for Black");
-  digitalWrite(G_LED, HIGH);
+  digitalWrite(LED_base, HIGH);
   flashLEDs(3);
-  digitalWrite(G_LED, LOW);
+  digitalWrite(LED_base, LOW);
   Serial.println("Calibration in Progress : ");
   for(int i = 0; i < LF_CALIB_STEPS; i++) {
     showProgressBar(i, LF_CALIB_STEPS);
@@ -367,22 +389,22 @@ void cmReverse (int x){
 void millisecondsForward(int x) {
   unsigned long currentTime = millis();
   Forward();
-  digitalWrite(G_LED, HIGH);
+  digitalWrite(LED_base, HIGH);
   while ((millis() - currentTime) < x) {
     customDelay(1);
   }
-  digitalWrite(G_LED, LOW);
+  digitalWrite(LED_base, LOW);
   Brake();
 }
 
 void millisecondsReverse(int x) {
   unsigned long starttime = millis();
   Reverse();
-  digitalWrite(R_LED, HIGH);
+  digitalWrite(LED_base+3, HIGH);
   while ((millis() - starttime) < x) {
     customDelay(1);
   }
-  digitalWrite(R_LED, LOW);
+  digitalWrite(LED_base+3, LOW);
   Brake();
 }
 
@@ -473,7 +495,7 @@ void isr2()
 }
 
 void pivotDegrees(int degree, int speed) {
-  unsigned long duration = int(abs(degree) * 10.85);
+  unsigned long duration = int(abs(degree) * 8.8);
   unsigned long start = millis();
   if (degree > 0) {
     while ((millis() - start) < duration) {
@@ -637,13 +659,27 @@ void record_RGB_data(int index, int r, int g, int b, int c, int colorTemp, int l
 // algorithm that will decide which color the sensor is looking at
 MOLE_COLORS get_current_observed_color(){
   uint16_t r, g, b, c, colorTemp, lux;
+  uint16_t newR = 0, newG = 0, newB = 0, newC = 0; 
 
-  tcs.getRawData(&r, &g, &b, &c);
-  colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
-  lux = tcs.calculateLux(r, g, b);
 
-  if (b < 5000) {
-        if (r < 3000) {
+  for(int i = 0; i < 5; i++){
+    tcs.getRawData(&r, &g, &b, &c);
+    newR += r;
+    newG += g;
+    newB += b;
+    newC += c;
+  }
+
+    newR = newR / 5;
+    newG = newG / 5;
+    newB = newB / 5;
+    newC = newC / 5;
+    colorTemp = tcs.calculateColorTemperature_dn40(newR, newG, newB, newC);
+    lux = tcs.calculateLux(newR, newG, newB);
+
+
+  if (newB < 5000) {
+        if (newR < 3000) {
             return GREEN;
         } else {
             if (lux < 638) {
@@ -653,7 +689,8 @@ MOLE_COLORS get_current_observed_color(){
             }
         }
   } else {
-        if (r < 2000) {
+      
+        if (newR < 2000) {
             return BLUE;
         } else {
             if (lux < 0) {
@@ -662,6 +699,12 @@ MOLE_COLORS get_current_observed_color(){
                 return WHITE;
             }
         }
+      /*
+      if (newR >= 2000 && lux > 0) {
+        return WHITE;
+      } else {
+        if ()
+      }*/
   }
 }
 // ============ END RGB SENSOR CODE ============
