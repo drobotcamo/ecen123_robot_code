@@ -56,7 +56,7 @@ const float VOLT[11] = {3.11, 2.3, 1.53, 1.21, 1.03, 0.89, 0.73, 0.69, 0.66, 0.6
 
 // color sensor
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_614MS, TCS34725_GAIN_1X);
-
+#define NUM_COLOR_SAMPLES 3
 
 const int MOLE_DEGREES[7] = {-90, -60, -30, 0, 30, 60, 90};
 
@@ -129,73 +129,11 @@ void setup(){
   digitalWrite(ENABLE_A, LOW);
   digitalWrite(ENABLE_B, LOW);
 
+  // safety delay
   Serial.println("Starting in 2 seconds");
   customDelay(2000);
 
-  //calibrate_RGB();
-  // pivotDegrees(360, 255);
-  // customDelay(500);
-  // pivotDegrees(360, 255);
-  // customDelay(500);
-  // pivotDegrees(360, 255);
-  // customDelay(500);
-  // pivotDegrees(360, 255);
-  // customDelay(500);
-  // whack_mole();
-  // customDelay(1000);
-  // whack_mole();
-  // customDelay(1000);
-
-
-  // calibrate
-  calibrateLineFollower();
-  customDelay(1000);
-  // follow line until coins
-  linefollow(12000);
-  // knock coins
-   pivotDegrees(-145,255);
-   // reset
-   pivotDegrees(145,255);
-   customDelay(500);
-   // face button
-   pivotDegrees(-105,255);
-   customDelay(1000);
-   // drive to line
-   millisecondsForward(1500);
-   customDelay(1000);
-   // hit button
-   linefollow(2500);
-   customDelay(1000);
-   // go back
-   millisecondsReverse(3500);
-   customDelay(1000);
-
-   MOLE_COLORS currentColor = BUTTON;
-   MOLE_COLORS nextColor = RED;
-
-  unsigned long start = millis();
-  unsigned long duration = 120000;
-  while(millis() - start < duration){
-     whacAMole(currentColor, nextColor);
-     millisecondsForward(1833);
-     linefollow(1300);
-     whack_mole();
-     customDelay(100);
-     digitalWrite(LED_base + currentColor, LOW);
-     currentColor = nextColor;
-     nextColor = get_current_observed_color();
-     // check for color read error (purple vs blue)
-     if (currentColor == nextColor) {
-      if (currentColor == BLUE)
-        nextColor = PURPLE;
-      if (currentColor == PURPLE)
-        nextColor = BLUE;
-     }
-     digitalWrite(LED_base + nextColor, HIGH);
-     //millisecondsReverse(3333);
-     millisecondsReverse(3500);
-   }
-
+  master_route();
 }
 
 void loop(){
@@ -205,9 +143,68 @@ void loop(){
   // calibrateLineFollower();
 }
 
+// ============ BEGIN CONTROL CODE ============
+void master_route(){
+  // calibrate
+  calibrateLineFollower();
+  customDelay(1000);
+  // follow line until coins
+  linefollow_duration(11000);
+
+  turn_and_hit_coins();
+  customDelay(250);
+  linefollow_duration(1350);
+  turn_and_hit_coins();
+
+  millisecondsReverse(1000);
+  // face button
+  pivotDegrees(-90,255);
+  customDelay(1000);
+  // drive to line
+  millisecondsForward(1500);
+  customDelay(1000);
+  // hit button
+  linefollow_duration(2500);
+  linefollow_until_wall_dist(10);
+  millisecondsForward(1000);
+  customDelay(1000);
+  // go back
+  millisecondsReverse(3000);
+  customDelay(1000);
+
+  MOLE_COLORS currentColor = BUTTON;
+  MOLE_COLORS nextColor = RED;
+
+  unsigned long start = millis();
+  unsigned long duration = 120000;
+  while(millis() - start < duration){
+     whacAMole(currentColor, nextColor);
+     millisecondsForward(1833);
+    //  linefollow_duration(1300);
+    linefollow_until_wall_dist(7);
+     whack_mole();
+     customDelay(100);
+     digitalWrite(LED_base + currentColor, LOW);
+     currentColor = nextColor;
+     nextColor = see_the_color();
+     // check for color read error (purple vs blue)
+     /*if (currentColor == nextColor) {
+      if (currentColor == BLUE)
+        nextColor = PURPLE;
+      if (currentColor == PURPLE)
+        nextColor = BLUE;
+     }*/
+     digitalWrite(LED_base + nextColor, HIGH);
+     //millisecondsReverse(3333);
+     millisecondsReverse(3000);
+   }
+
+}
+// ============ END CONTROL CODE ============
+
 // ============ BEGIN LINE FOLLOWER CODE ============
 // this method will attempt to follow a line for ~duration~ milliseconds
-void linefollow(unsigned long input_duration) {
+void linefollow_duration(unsigned long input_duration) {
   unsigned long duration = input_duration;
   unsigned long start = millis();
   uint16_t sensors[8];
@@ -226,6 +223,72 @@ void linefollow(unsigned long input_duration) {
   const double K_d = 0.06;
 
   while (millis() - start < duration) {
+    position = qtr.readLineBlack(sensors);
+    Serial.println(position);
+    for(int i = 0; i < 8; i++) {
+      if (sensors[i] > 800) {
+        digitalWrite(LED_BASE + i, HIGH);
+      } else {
+        digitalWrite(LED_BASE + i, LOW);
+      }
+    }
+    // Serial.println();
+    error = 3500 - position;
+    Serial.print("Error: ");
+    Serial.println(error);
+
+    motorSpeed = (int)(K_p * error + K_d * (error - previousError));
+    Serial.print("Motor Speed: ");
+    Serial.println(motorSpeed);
+
+    previousError = error;
+
+    motorSpeed = checkBounded(motorSpeed, -2 * defaultMotorSpeed, TOP_SPEED);
+
+    leftMotorSpeed = defaultMotorSpeed - motorSpeed;
+    rightMotorSpeed = defaultMotorSpeed + motorSpeed;
+
+    leftMotorSpeed = checkBounded(leftMotorSpeed, -1 * defaultMotorSpeed, TOP_SPEED);
+    rightMotorSpeed = checkBounded(rightMotorSpeed, -1 * defaultMotorSpeed, TOP_SPEED);
+    Serial.print("Left Motor Speed: ");
+    Serial.println(leftMotorSpeed);
+    Serial.print("Right Motor Speed: ");
+    Serial.println(rightMotorSpeed);
+
+    if (rightMotorSpeed > 0) {
+      r_motor(HIGH, LOW, HIGH, rightMotorSpeed);
+    } else {
+      r_motor(HIGH, HIGH, LOW, -1 * rightMotorSpeed);
+    }
+
+    if (leftMotorSpeed > 0) {
+      l_motor(HIGH, HIGH, LOW, leftMotorSpeed);
+    } else {
+      l_motor(HIGH, LOW, HIGH, -1.0 * leftMotorSpeed);
+    }
+  }
+  turnLEDS(LOW);
+  Brake();
+}
+
+
+void linefollow_until_wall_dist(int target_dist) {
+  uint16_t sensors[8];
+
+  uint16_t position;
+  int error;
+  double previousError;
+
+  int motorSpeed;
+  int leftMotorSpeed;
+  int rightMotorSpeed;
+
+  const int defaultMotorSpeed = 155;
+  // const double K_p = 0.03;
+  const double K_p = 0.065;
+  const double K_d = 0.06;
+
+  while (distance_calc() > target_dist) {
     position = qtr.readLineBlack(sensors);
     Serial.println(position);
     for(int i = 0; i < 8; i++) {
@@ -331,6 +394,17 @@ void route(){
 // ============ END LINE FOLLOWER CODE ============
 
 // ============ BEGIN MOTOR CODE ============
+void turn_and_hit_coins() {
+  // knock coins
+  pivotDegrees(-90,255);
+  // back up into coins
+  millisecondsReverse(350);
+  // come back
+  millisecondsForward(350);
+  // face the right way
+  pivotDegrees(90,255);
+}
+
 void cmForward (int x){
   int start_count = counter;
   Forward();
@@ -706,6 +780,82 @@ MOLE_COLORS get_current_observed_color(){
         if ()
       }*/
   }
+}
+
+MOLE_COLORS see_the_color() {
+  uint16_t r, g, b, c, colorTemp, lux;
+  uint16_t newR = 0, newG = 0, newB = 0, newC = 0; 
+
+  for(int i = 0; i < NUM_COLOR_SAMPLES; i++){
+    tcs.getRawData(&r, &g, &b, &c);
+    newR += r;
+    newG += g;
+    newB += b;
+    newC += c;
+  }
+
+  r = newR / NUM_COLOR_SAMPLES;
+  g = newG / NUM_COLOR_SAMPLES;
+  b = newB / NUM_COLOR_SAMPLES;
+  c = newC / NUM_COLOR_SAMPLES;
+  colorTemp = tcs.calculateColorTemperature_dn40(r, g, b, c);
+  lux = tcs.calculateLux(newR, newG, newB);
+
+  // tolerance values
+  int r_tol = 1000;
+  int g_tol = 1000;
+  int b_tol = 1000;
+  int c_tol = 1000;
+
+  // blue
+  if (r >= (325 - r_tol) && r <= (491 + r_tol) &&
+      g >= (1553 - g_tol) && g <= (1714 + g_tol) &&
+      b >= (4691 - b_tol) && b <= (4845 + b_tol) &&
+      c >= (6446 - c_tol) && c <= (6987 + c_tol)) {
+      return BLUE;
+  }
+
+  // green
+  if (r >= (835 - r_tol) && r <= (849 + r_tol) &&
+      g >= (3419 - g_tol) && g <= (3433 + g_tol) &&
+      b >= (1338 - b_tol) && b <= (1347 + b_tol) &&
+      c >= (5683 - c_tol) && c <= (5724 + c_tol)) {
+      return GREEN;
+  }
+
+  // purple
+  if (r >= (1758 - r_tol) && r <= (1774 + r_tol) &&
+      g >= (1763 - g_tol) && g <= (1773 + g_tol) &&
+      b >= (4936 - b_tol) && b <= (4970 + b_tol) &&
+      c >= (8281 - c_tol) && c <= (8331 + c_tol)) {
+      return PURPLE;
+  }
+
+  // red
+  if (r >= (2997 - r_tol) && r <= (3061 + r_tol) &&
+      g >= (434 - g_tol) && g <= (487 + g_tol) &&
+      b >= (439 - b_tol) && b <= (470 + b_tol) &&
+      c >= (3739 - c_tol) && c <= (3901 + c_tol)) {
+      return RED;
+  }
+
+  // white
+  if (r >= (3385 - r_tol) && r <= (3419 + r_tol) &&
+      g >= (4853 - g_tol) && g <= (4869 + g_tol) &&
+      b >= (6080 - b_tol) && b <= (6101 + b_tol) &&
+      c >= (14096 - c_tol) && c <= (14166 + c_tol)) {
+      return WHITE;
+  }
+
+  // Yellow
+  if (r >= (2002 - r_tol) && r <= (3215 + r_tol) &&
+      g >= (1598 - g_tol) && g <= (2019 + g_tol) &&
+      b >= (1013 - b_tol) && b <= (1716 + b_tol) &&
+      c >= (5244 - c_tol) && c <= (6140 + c_tol)) {
+      return YELLOW;
+  }
+
+  return BUTTON;
 }
 // ============ END RGB SENSOR CODE ============
 
