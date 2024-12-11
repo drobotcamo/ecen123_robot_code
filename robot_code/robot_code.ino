@@ -153,10 +153,10 @@ void master_route(){
 
   turn_and_hit_coins();
   customDelay(250);
-  linefollow_duration(1350);
+  linefollow_duration(950);
   turn_and_hit_coins();
 
-  millisecondsReverse(1000);
+  millisecondsReverse(800);
   // face button
   pivotDegrees(-90,255);
   customDelay(1000);
@@ -186,7 +186,7 @@ void master_route(){
      customDelay(100);
      digitalWrite(LED_base + currentColor, LOW);
      currentColor = nextColor;
-     nextColor = see_the_color();
+     nextColor = get_current_observed_color();
      // check for color read error (purple vs blue)
      /*if (currentColor == nextColor) {
       if (currentColor == BLUE)
@@ -736,7 +736,7 @@ MOLE_COLORS get_current_observed_color(){
   uint16_t newR = 0, newG = 0, newB = 0, newC = 0; 
 
 
-  for(int i = 0; i < 5; i++){
+  for(int i = 0; i < NUM_COLOR_SAMPLES; i++){
     tcs.getRawData(&r, &g, &b, &c);
     newR += r;
     newG += g;
@@ -744,41 +744,34 @@ MOLE_COLORS get_current_observed_color(){
     newC += c;
   }
 
-    newR = newR / 5;
-    newG = newG / 5;
-    newB = newB / 5;
-    newC = newC / 5;
+    newR = newR / NUM_COLOR_SAMPLES;
+    newG = newG / NUM_COLOR_SAMPLES;
+    newB = newB / NUM_COLOR_SAMPLES;
+    newC = newC / NUM_COLOR_SAMPLES;
     colorTemp = tcs.calculateColorTemperature_dn40(newR, newG, newB, newC);
     lux = tcs.calculateLux(newR, newG, newB);
 
 
-  if (newB < 5000) {
-        if (newR < 3000) {
+  if (newB < 3000) {
+        if (newR < 1500) {
             return GREEN;
         } else {
-            if (lux < 638) {
+            if (newC < 5000) {
                 return RED;
             } else {
                 return YELLOW;
             }
         }
   } else {
-      
-        if (newR < 2000) {
+        if (newR < 900) {
             return BLUE;
         } else {
-            if (lux < 0) {
+            if (newG < 3000) {
                 return PURPLE;
             } else {
                 return WHITE;
             }
         }
-      /*
-      if (newR >= 2000 && lux > 0) {
-        return WHITE;
-      } else {
-        if ()
-      }*/
   }
 }
 
